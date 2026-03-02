@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, MoreVertical, User } from 'lucide-react';
+import EmptyState from '../../components/EmptyState';
 import './Patients.css';
 
 const mockPatients = [
@@ -13,6 +14,7 @@ const mockPatients = [
 
 export default function Patients() {
   const [query, setQuery] = useState('');
+  const patients = mockPatients; // could switch to emptyPatients to show empty state
 
   return (
     <div className="patients-page">
@@ -39,6 +41,14 @@ export default function Patients() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
+        {patients.length === 0 ? (
+          <EmptyState
+            title="No patients yet"
+            description="Add patients to manage records and track scans."
+            actionLabel="Add patient"
+            onAction={() => {}}
+          />
+        ) : (
         <table className="patients-table">
           <thead>
             <tr>
@@ -50,7 +60,7 @@ export default function Patients() {
             </tr>
           </thead>
           <tbody>
-            {mockPatients.map((p, i) => (
+            {patients.map((p, i) => (
               <motion.tr
                 key={p.id}
                 initial={{ opacity: 0 }}
@@ -77,6 +87,7 @@ export default function Patients() {
             ))}
           </tbody>
         </table>
+        )}
       </motion.div>
     </div>
   );

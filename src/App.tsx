@@ -1,8 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
 import AppLayout from './components/layout/AppLayout';
+import LoadingBar from './components/LoadingBar';
+import ErrorBoundary from './components/ErrorBoundary';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import Onboarding from './pages/Onboarding';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import Dashboard from './pages/app/Dashboard';
 import Patients from './pages/app/Patients';
 import UploadScan from './pages/app/UploadScan';
@@ -19,11 +26,18 @@ import Help from './pages/app/Help';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <BrowserRouter>
+          <LoadingBar />
+          <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
@@ -42,6 +56,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

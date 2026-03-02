@@ -1,0 +1,37 @@
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.empty-state-icon {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.empty-state-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+}
+
+.empty-state-desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+
+.empty-state-cta {
+  margin-top: 0.5rem;
+}
+
+.empty-state-cta:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

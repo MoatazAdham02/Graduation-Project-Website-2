@@ -38,6 +38,7 @@
 
   /* Spacing & layout */
   --sidebar-width: 260px;
+  --sidebar-width-collapsed: 72px;
   --header-height: 64px;
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -49,6 +50,19 @@
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
   --transition-slow: 350ms ease;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0f172a;
+  --color-bg-elevated: #1e293b;
+  --color-surface: #1e293b;
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -86,6 +100,20 @@ a:hover {
 button {
   font-family: var(--font-sans);
   cursor: pointer;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  border-radius: 0;
 }
 
 /* Utility classes */

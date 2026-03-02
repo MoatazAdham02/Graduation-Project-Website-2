@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Menu, Bell, User } from 'lucide-react';
+import { Search, Menu, Bell, User, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 import './Header.css';
 
 type HeaderProps = {
@@ -11,6 +12,7 @@ type HeaderProps = {
 export default function Header({ title, subtitle }: HeaderProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   return (
     <motion.header
@@ -40,6 +42,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
         >
           <Search size={18} className="header-search-icon" />
           <input
+            id="header-search"
             type="search"
             placeholder="Search patients, reports..."
             className="header-search"
@@ -51,6 +54,14 @@ export default function Header({ title, subtitle }: HeaderProps) {
         <button type="button" className="header-icon-btn" aria-label="Notifications">
           <Bell size={20} />
           <span className="header-badge">3</span>
+        </button>
+        <button
+          type="button"
+          className="header-icon-btn"
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         <button type="button" className="header-avatar" aria-label="Profile">
           <User size={20} />

@@ -9,10 +9,31 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/app');
+    setError('');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!name.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      const done = localStorage.getItem('coronet-onboarding-done');
+      navigate(done ? '/app' : '/onboarding');
+    }, 600);
   };
 
   return (
@@ -73,12 +94,13 @@ export default function Signup() {
           </div>
 
           <p className="auth-terms">
-            By signing up, you agree to our <a href="#terms">Terms</a> and{' '}
-            <a href="#privacy">Privacy Policy</a>.
+            By signing up, you agree to our <Link to="/terms">Terms</Link> and{' '}
+            <Link to="/privacy">Privacy Policy</Link>.
           </p>
 
-          <button type="submit" className="btn btn-primary auth-submit">
-            Create account
+          {error && <p className="auth-error">{error}</p>}
+          <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
+            {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
 

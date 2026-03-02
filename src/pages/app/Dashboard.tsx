@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity, Users, FileText, TrendingUp, ArrowUpRight } from 'lucide-react';
+import EmptyState from '../../components/EmptyState';
 import './Dashboard.css';
 
 const stats = [
@@ -16,7 +18,42 @@ const recent = [
   { id: '3', patient: 'Robert K.', type: 'X-Ray Spine', date: '1 hr ago', status: 'Completed' },
 ];
 
+function StatSkeleton() {
+  return (
+    <div className="dashboard-stat card dashboard-stat-skeleton">
+      <div className="dashboard-skeleton dashboard-skeleton-icon" />
+      <div className="dashboard-stat-content">
+        <span className="dashboard-skeleton dashboard-skeleton-label" />
+        <span className="dashboard-skeleton dashboard-skeleton-value" />
+        <span className="dashboard-skeleton dashboard-skeleton-change" />
+      </div>
+    </div>
+  );
+}
+
+function RecentListSkeleton() {
+  return (
+    <ul className="dashboard-list">
+      {[1, 2, 3].map((i) => (
+        <li key={i} className="dashboard-list-item">
+          <div className="dashboard-skeleton dashboard-skeleton-line" style={{ width: '70%' }} />
+          <div className="dashboard-list-meta">
+            <span className="dashboard-skeleton dashboard-skeleton-inline" style={{ width: 60 }} />
+            <span className="dashboard-skeleton dashboard-skeleton-badge" style={{ width: 72 }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className="dashboard">
       <motion.div
@@ -25,7 +62,15 @@ export default function Dashboard() {
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
       >
-        {stats.map((s) => (
+        {loading ? (
+          <>
+            <StatSkeleton />
+            <StatSkeleton />
+            <StatSkeleton />
+            <StatSkeleton />
+          </>
+        ) : (
+        stats.map((s) => (
           <motion.div
             key={s.label}
             className="dashboard-stat card"
@@ -43,10 +88,8 @@ export default function Dashboard() {
               <span className="dashboard-stat-change">{s.change}</span>
             </div>
           </motion.div>
-        ))}
+        )))}
       </motion.div>
-
-      <div className="dashboard-grid">
         <motion.section
           className="card dashboard-section"
           initial={{ opacity: 0, y: 16 }}
@@ -55,10 +98,20 @@ export default function Dashboard() {
         >
           <div className="dashboard-section-header">
             <h2>Recent activity</h2>
-            <a href="#" className="dashboard-section-link">
+            <Link to="/app/analysis" className="dashboard-section-link">
               View all <ArrowUpRight size={16} />
-            </a>
+            </Link>
           </div>
+          {loading ? (
+            <RecentListSkeleton />
+          ) : recent.length === 0 ? (
+            <EmptyState
+              title="No recent activity"
+              description="Scans and reports will appear here once you start using COROnet."
+              actionLabel="Upload your first scan"
+              actionTo="/app/upload"
+            />
+          ) : (
           <ul className="dashboard-list">
             {recent.map((r, i) => (
               <motion.li
@@ -80,6 +133,7 @@ export default function Dashboard() {
               </motion.li>
             ))}
           </ul>
+          )}
         </motion.section>
 
         <motion.section
@@ -98,6 +152,10 @@ export default function Dashboard() {
               <span>New analysis</span>
               <ArrowUpRight size={18} />
             </Link>
+            <Link to="/app/compare" className="dashboard-action card">
+              <span>Compare studies</span>
+              <ArrowUpRight size={18} />
+            </Link>
             <Link to="/app/reports" className="dashboard-action card">
               <span>View reports</span>
               <ArrowUpRight size={18} />
@@ -105,6 +163,5 @@ export default function Dashboard() {
           </div>
         </motion.section>
       </div>
-    </div>
-  );
+    );
 }

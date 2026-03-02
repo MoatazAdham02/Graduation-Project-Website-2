@@ -1,11 +1,32 @@
 import { motion } from 'framer-motion';
-import { HelpCircle, Book, MessageCircle, Mail } from 'lucide-react';
+import { HelpCircle, Book, MessageCircle, Mail, Upload, FileText, Share2 } from 'lucide-react';
 import './Help.css';
 
 const topics = [
   { icon: Book, title: 'Documentation', desc: 'Guides and API reference.' },
   { icon: MessageCircle, title: 'Contact support', desc: 'Chat with our team.' },
   { icon: Mail, title: 'Email support', desc: 'support@coronet.app' },
+];
+
+const helpSections = [
+  {
+    id: 'uploading',
+    icon: Upload,
+    title: 'Uploading scans',
+    content: 'Go to Upload Scan from the sidebar or Dashboard quick actions. Drag and drop DICOM (.dcm), NIfTI (.nii, .nii.gz), or image files (.jpg, .png). Supported studies are processed automatically and appear in your worklist. Use the file picker if you prefer to browse.',
+  },
+  {
+    id: 'reports',
+    icon: FileText,
+    title: 'Reading reports',
+    content: 'Open the Reports page to see all generated reports. Click a report to view details and export to PDF. You can filter by date, patient, or modality. AI findings are highlighted; always review and verify with your clinical judgment.',
+  },
+  {
+    id: 'sharing',
+    icon: Share2,
+    title: 'Sharing a case',
+    content: 'From a case or the Share Case page, click Share to generate a secure link or send an email invite. You can set an expiration time and allow or restrict downloads. Recipients need a COROnet account or a one-time access link depending on your settings.',
+  },
 ];
 
 export default function Help() {
@@ -53,6 +74,26 @@ export default function Help() {
           </motion.a>
         ))}
       </motion.div>
+
+      <motion.section
+        className="help-sections"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <h2 className="help-sections-title">Getting started</h2>
+        {helpSections.map((s) => (
+          <div key={s.id} className="card help-section-card">
+            <div className="help-section-icon">
+              <s.icon size={22} />
+            </div>
+            <div>
+              <h3>{s.title}</h3>
+              <p>{s.content}</p>
+            </div>
+          </div>
+        ))}
+      </motion.section>
 
       <motion.section
         className="card help-faq"

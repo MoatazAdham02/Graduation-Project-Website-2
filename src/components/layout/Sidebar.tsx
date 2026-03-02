@@ -16,7 +16,10 @@ import {
   HelpCircle,
   Stethoscope,
   LogOut,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
+import { useLayout } from './AppLayout';
 import './Sidebar.css';
 
 const navItems = [
@@ -40,10 +43,11 @@ const bottomItems = [
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const { sidebarCollapsed, setSidebarCollapsed } = useLayout();
 
   return (
     <motion.aside
-      className="sidebar"
+      className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -64,6 +68,7 @@ export default function Sidebar() {
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
             end={item.to === '/app'}
+            title={sidebarCollapsed ? item.label : undefined}
           >
             {({ isActive }) => (
               <>
@@ -90,14 +95,24 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `sidebar-link sidebar-link-bottom ${isActive ? 'sidebar-link-active' : ''}`
             }
+            title={sidebarCollapsed ? item.label : undefined}
           >
             <item.icon size={20} strokeWidth={2} />
             <span className="sidebar-link-label">{item.label}</span>
           </NavLink>
         ))}
-        <button type="button" className="sidebar-link sidebar-link-logout" onClick={() => navigate('/')}>
+        <button type="button" className="sidebar-link sidebar-link-logout" onClick={() => navigate('/')} title={sidebarCollapsed ? 'Sign out' : undefined}>
           <LogOut size={20} strokeWidth={2} />
           <span className="sidebar-link-label">Sign out</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
         </button>
       </div>
     </motion.aside>

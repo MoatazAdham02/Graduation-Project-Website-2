@@ -82,6 +82,54 @@
   margin: 0;
 }
 
+.help-sections {
+  margin-bottom: 2rem;
+}
+
+.help-sections-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 1rem;
+}
+
+.help-section-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.help-section-card:last-child {
+  margin-bottom: 0;
+}
+
+.help-section-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.help-section-card h3 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin: 0 0 0.375rem;
+  color: var(--color-text);
+}
+
+.help-section-card p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
 .help-faq {
   padding: 1.5rem;
 }
