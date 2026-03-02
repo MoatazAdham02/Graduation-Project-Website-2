@@ -1,0 +1,128 @@
+.analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.analytics-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.analytics-metric {
+  padding: 1.25rem;
+}
+
+.analytics-metric-label {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.analytics-metric-value {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.analytics-metric-change {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.analytics-metric-change--up {
+  color: var(--color-success);
+}
+
+.analytics-metric-change--down {
+  color: var(--color-primary);
+}
+
+.analytics-chart-card {
+  padding: 1.25rem;
+}
+
+.analytics-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.analytics-chart-header h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.analytics-chart-select {
+  width: 140px;
+}
+
+.analytics-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 200px;
+}
+
+.analytics-chart-bar-wrap {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 20px;
+}
+
+.analytics-chart-bar {
+  width: 100%;
+  max-width: 32px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  transition: height 0.4s ease;
+}
+
+.analytics-activity {
+  padding: 1.25rem;
+}
+
+.analytics-activity h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--color-text);
+}
+
+.analytics-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analytics-activity-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.analytics-activity-list li:last-child {
+  border-bottom: none;
+}
+
+.analytics-activity-list li svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.analytics-activity-time {
+  margin-left: auto;
+  color: var(--color-text-muted);
+}

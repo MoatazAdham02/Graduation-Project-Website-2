@@ -1,0 +1,116 @@
+.help-page {
+  max-width: 720px;
+}
+
+.help-hero {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.help-hero-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.help-hero h1 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: var(--color-text);
+}
+
+.help-hero p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 1.25rem;
+}
+
+.help-search {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.help-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.help-card {
+  padding: 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform var(--transition-fast), box-shadow var(--transition-base);
+}
+
+.help-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.help-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.help-card h3 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: var(--color-text);
+}
+
+.help-card p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.help-faq {
+  padding: 1.5rem;
+}
+
+.help-faq h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--color-text);
+}
+
+.help-faq-list {
+  margin: 0;
+}
+
+.help-faq-list dt {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  margin-top: 1rem;
+}
+
+.help-faq-list dt:first-child {
+  margin-top: 0;
+}
+
+.help-faq-list dd {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0.25rem 0 0;
+  line-height: 1.5;
+}

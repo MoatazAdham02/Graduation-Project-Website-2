@@ -1,0 +1,83 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Search, Plus, MoreVertical, User } from 'lucide-react';
+import './Patients.css';
+
+const mockPatients = [
+  { id: '1', name: 'John Doe', mrn: 'MRN-001', dob: '1985-03-12', lastScan: '2 days ago' },
+  { id: '2', name: 'Maria Garcia', mrn: 'MRN-002', dob: '1972-08-22', lastScan: '1 week ago' },
+  { id: '3', name: 'Robert Kim', mrn: 'MRN-003', dob: '1990-11-05', lastScan: '3 days ago' },
+  { id: '4', name: 'Sarah Chen', mrn: 'MRN-004', dob: '1968-01-30', lastScan: 'Today' },
+  { id: '5', name: 'James Wilson', mrn: 'MRN-005', dob: '1955-07-18', lastScan: '5 days ago' },
+];
+
+export default function Patients() {
+  const [query, setQuery] = useState('');
+
+  return (
+    <div className="patients-page">
+      <div className="patients-toolbar">
+        <div className="patients-search-wrap">
+          <Search size={18} className="patients-search-icon" />
+          <input
+            type="search"
+            placeholder="Search by name or MRN..."
+            className="input patients-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <button type="button" className="btn btn-primary">
+          <Plus size={18} />
+          Add patient
+        </button>
+      </div>
+
+      <motion.div
+        className="card patients-table-wrap"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <table className="patients-table">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>MRN</th>
+              <th>DOB</th>
+              <th>Last scan</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {mockPatients.map((p, i) => (
+              <motion.tr
+                key={p.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.04 }}
+              >
+                <td>
+                  <div className="patients-cell-patient">
+                    <div className="patients-avatar">
+                      <User size={16} />
+                    </div>
+                    <span>{p.name}</span>
+                  </div>
+                </td>
+                <td><code>{p.mrn}</code></td>
+                <td>{p.dob}</td>
+                <td>{p.lastScan}</td>
+                <td>
+                  <button type="button" className="patients-menu-btn" aria-label="Actions">
+                    <MoreVertical size={18} />
+                  </button>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.div>
+    </div>
+  );
+}

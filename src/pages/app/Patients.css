@@ -1,0 +1,97 @@
+.patients-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.patients-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.patients-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.patients-search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+.patients-search {
+  padding-left: 2.5rem;
+}
+
+.patients-table-wrap {
+  overflow: hidden;
+  padding: 0;
+}
+
+.patients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.patients-table th {
+  text-align: left;
+  padding: 0.875rem 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.patients-table td {
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.patients-table tbody tr:hover {
+  background: var(--color-bg);
+}
+
+.patients-cell-patient {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.patients-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patients-table code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-surface);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.patients-menu-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  padding: 0.375rem;
+  border-radius: var(--radius-sm);
+}
+.patients-menu-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}

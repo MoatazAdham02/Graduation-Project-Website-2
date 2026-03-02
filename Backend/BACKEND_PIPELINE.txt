@@ -1,0 +1,102 @@
+================================================================================
+COROnet Backend Pipeline — Node.js, Express, MongoDB
+================================================================================
+Keep this backend separate from the frontend (Vite/React in project root).
+Frontend talks to the API via HTTP using an env variable (e.g. VITE_API_URL).
+
+--------------------------------------------------------------------------------
+1. PROJECT SETUP
+--------------------------------------------------------------------------------
+  • Create folder: Backend (or backend)
+  • Inside Backend run: npm init -y
+  • Set "type": "module" in package.json (for ES modules)
+  • Install dependencies:
+      npm install express mongoose cors dotenv bcryptjs jsonwebtoken
+
+  • Create .env (copy from .env.example) with:
+      PORT=4000
+      MONGODB_URI=mongodb://localhost:27017/coronet
+      JWT_SECRET=your-secret-key-change-in-production
+      CORS_ORIGIN=http://localhost:5173
+
+--------------------------------------------------------------------------------
+2. FOLDER STRUCTURE
+--------------------------------------------------------------------------------
+  Backend/
+    server.js              ← Entry point: connect DB, create Express app, mount routes
+    .env                   ← Your secrets (do not commit)
+    .env.example           ← Template (safe to commit)
+    config/
+      db.js                ← MongoDB connection (mongoose.connect)
+    models/
+      User.js              ← User schema (name, email, password with bcrypt hash)
+    routes/
+      auth.routes.js       ← POST /register, POST /login, GET /me (protected)
+    middleware/
+      auth.js              ← JWT verification; attach req.user for protected routes
+
+--------------------------------------------------------------------------------
+3. DATABASE (MongoDB)
+--------------------------------------------------------------------------------
+  • Option A: Run MongoDB locally (e.g. mongod) and use:
+      MONGODB_URI=mongodb://localhost:27017/coronet
+  • Option B: Create a cluster at mongodb.com/cloud/atlas, get connection string, set
+      MONGODB_URI=mongodb+srv://user:pass@cluster.xxxxx.mongodb.net/coronet
+
+  • In config/db.js: mongoose.connect(MONGODB_URI) and call it from server.js
+    before starting the server.
+
+--------------------------------------------------------------------------------
+4. EXPRESS APP (server.js)
+--------------------------------------------------------------------------------
+  • Import: express, cors, dotenv, config/db, routes
+  • Load env: dotenv.config()
+  • Connect DB: await connectDB()
+  • Create app: express()
+  • Middleware: app.use(cors({ origin: CORS_ORIGIN })), app.use(express.json())
+  • Routes: app.use('/api/auth', authRoutes)
+  • Optional: app.get('/api/health', (req, res) => res.json({ ok: true }))
+  • 404 and error handler middleware
+  • app.listen(PORT)
+
+--------------------------------------------------------------------------------
+5. AUTH PIPELINE (JWT)
+--------------------------------------------------------------------------------
+  • User model: name, email, password (hash with bcrypt on save); method
+    comparePassword(candidate) for login.
+  • POST /api/auth/register: validate name, email, password; check email not
+    taken; User.create(); sign JWT (jwt.sign({ userId: user._id }, JWT_SECRET));
+    return { token, user: { id, name, email } }.
+  • POST /api/auth/login: find user by email, comparePassword; if valid, sign
+    JWT and return { token, user }.
+  • GET /api/auth/me: use auth middleware to verify Bearer token, attach
+    req.user, return { user: { id, name, email } }.
+  • auth middleware: read Authorization header, jwt.verify(token), find user
+    by decoded.userId, set req.user; else 401.
+
+--------------------------------------------------------------------------------
+6. FRONTEND CONNECTION
+--------------------------------------------------------------------------------
+  • In frontend .env.local set: VITE_API_URL=http://localhost:4000
+  • For login/register: POST to VITE_API_URL + '/api/auth/login' or
+    '/api/auth/register' with JSON body; store returned token (e.g. localStorage).
+  • For protected requests: send header Authorization: Bearer <token>
+  • Optional: Auth context that holds user, calls /api/auth/me on load if
+    token exists, and provides login/logout that hit the API and update state.
+
+--------------------------------------------------------------------------------
+7. RUNNING THE BACKEND
+--------------------------------------------------------------------------------
+  • First time: cp .env.example .env (then edit .env); npm install
+  • Start: npm run dev (e.g. "node --watch server.js") or npm start (node server.js)
+  • Server runs at http://localhost:4000
+  • Start frontend separately (npm run dev in project root) so it can call this API.
+
+--------------------------------------------------------------------------------
+8. SUMMARY
+--------------------------------------------------------------------------------
+  Backend responsibilities: MongoDB connection, User model, register/login logic,
+  JWT issue/verify, protected /me route. Frontend: UI, forms, store token,
+  send token on API calls, protect routes (redirect to login if no token).
+
+================================================================================
