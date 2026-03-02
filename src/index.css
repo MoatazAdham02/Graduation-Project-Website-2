@@ -134,6 +134,7 @@ button {
 }
 .btn-primary:hover {
   background: var(--color-primary-hover);
+  color: white;
 }
 .btn-secondary {
   background: var(--color-surface);

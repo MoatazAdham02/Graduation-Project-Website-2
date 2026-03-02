@@ -191,6 +191,11 @@
 
 .landing-hero-title-word {
   display: inline-block;
+  margin-right: 0.28em;
+}
+
+.landing-hero-title-word:last-child {
+  margin-right: 0;
 }
 
 .landing-hero-desc {
