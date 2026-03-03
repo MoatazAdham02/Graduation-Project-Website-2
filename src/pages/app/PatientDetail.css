@@ -1,0 +1,108 @@
+.patient-detail-page {
+  max-width: 720px;
+}
+
+.patient-detail-card {
+  padding: 1.5rem;
+}
+
+.patient-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+.patient-detail-back:hover {
+  color: var(--color-primary);
+}
+
+.patient-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.patient-detail-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-detail-name {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 0.35rem;
+}
+
+.patient-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.patient-detail-meta code {
+  font-family: var(--font-mono);
+  background: var(--color-surface);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.patient-detail-section h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.75rem;
+}
+
+.patient-detail-empty {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.patient-detail-studies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.patient-detail-study {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+}
+.patient-detail-study-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.patient-detail-study > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.patient-detail-study-date {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.patient-detail-study .btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: var(--text-xs);
+}

@@ -1,0 +1,117 @@
+.report-detail-page {
+  max-width: 720px;
+}
+
+.report-detail-card {
+  padding: 1.5rem;
+}
+
+.report-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.report-detail-back:hover {
+  color: var(--color-primary);
+}
+
+.report-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.report-detail-meta {
+  margin-bottom: 1.5rem;
+}
+
+.report-detail-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+}
+
+.report-detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.report-detail-meta-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.report-detail-status {
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+.report-detail-status--final {
+  background: #d1fae5;
+  color: var(--color-success);
+}
+.report-detail-status--draft {
+  background: #fef3c7;
+  color: var(--color-warning);
+}
+
+.report-detail-section {
+  margin-bottom: 1.5rem;
+}
+.report-detail-section h2 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.5rem;
+}
+.report-detail-section p {
+  font-size: var(--text-base);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+}
+.report-detail-ai {
+  padding: 1rem;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+}
+.report-detail-ai h2 {
+  color: var(--color-primary-dark);
+}
+
+@media print {
+  .report-detail-header .report-detail-back,
+  .report-detail-actions,
+  .sidebar,
+  .header,
+  .breadcrumbs,
+  .skip-link,
+  .app-content > a[href="/app/reports"] {
+    display: none !important;
+  }
+  .report-detail-page {
+    max-width: none;
+  }
+  .report-detail-card {
+    box-shadow: none;
+    border: none;
+  }
+}

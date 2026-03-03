@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import AppLayout from './components/layout/AppLayout';
 import LoadingBar from './components/LoadingBar';
@@ -12,9 +12,11 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Dashboard from './pages/app/Dashboard';
 import Patients from './pages/app/Patients';
+import PatientDetail from './pages/app/PatientDetail';
 import UploadScan from './pages/app/UploadScan';
 import AnalysisStudio from './pages/app/AnalysisStudio';
 import Reports from './pages/app/Reports';
+import ReportDetail from './pages/app/ReportDetail';
 import Compare from './pages/app/Compare';
 import ShareCase from './pages/app/ShareCase';
 import Annotation from './pages/app/Annotation';
@@ -23,6 +25,8 @@ import Admin from './pages/app/Admin';
 import Settings from './pages/app/Settings';
 import Notifications from './pages/app/Notifications';
 import Help from './pages/app/Help';
+import NotFound from './pages/NotFound';
+import SkipLink from './components/SkipLink';
 
 function App() {
   return (
@@ -30,6 +34,7 @@ function App() {
       <ThemeProvider>
         <BrowserRouter>
           <LoadingBar />
+          <SkipLink />
           <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -41,9 +46,11 @@ function App() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
+          <Route path="patients/:id" element={<PatientDetail />} />
           <Route path="upload" element={<UploadScan />} />
           <Route path="analysis" element={<AnalysisStudio />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="reports/:id" element={<ReportDetail />} />
           <Route path="compare" element={<Compare />} />
           <Route path="share" element={<ShareCase />} />
           <Route path="annotation" element={<Annotation />} />
@@ -53,7 +60,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="help" element={<Help />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
     </ThemeProvider>

@@ -86,3 +86,12 @@
   background: #fef3c7;
   color: var(--color-warning);
 }
+
+.reports-load-more {
+  padding: 1rem;
+  text-align: center;
+}
+
+.reports-load-more .btn {
+  min-width: 120px;
+}

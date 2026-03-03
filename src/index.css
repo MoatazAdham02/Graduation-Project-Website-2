@@ -233,3 +233,23 @@ input:focus-visible {
 .animate-slide-up {
   animation: slideUp var(--transition-slow) ease forwards;
 }
+
+@media print {
+  .skip-link,
+  .landing-nav,
+  .sidebar,
+  .header,
+  .breadcrumbs,
+  .app-content > .breadcrumbs,
+  .loading-bar,
+  .landing-back-to-top,
+  .keyboard-shortcuts-overlay {
+    display: none !important;
+  }
+  .app-main {
+    margin-left: 0 !important;
+  }
+  body {
+    background: white;
+  }
+}

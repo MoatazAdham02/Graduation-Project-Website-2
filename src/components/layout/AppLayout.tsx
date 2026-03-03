@@ -22,6 +22,7 @@ export default function AppLayout() {
         <div className="app-main">
           <Header title={title} subtitle={subtitle} />
           <motion.main
+            id="main-content"
             className="app-content"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

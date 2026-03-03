@@ -55,7 +55,7 @@ export default function Landing() {
         </div>
       </nav>
 
-      <main className="landing-main">
+      <main id="main-content" className="landing-main">
       <section className="landing-hero" aria-labelledby="landing-hero-heading">
         <div className="landing-hero-bg" aria-hidden />
         <div className="container">
@@ -149,6 +149,19 @@ export default function Landing() {
             </div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      <section className="landing-trusted" aria-label="Trusted by">
+        <div className="container">
+          <p className="landing-trusted-label">Trusted by healthcare teams worldwide</p>
+          <div className="landing-trusted-logos">
+            {['Metro General', 'University Hospital', 'Valley Medical', 'Research Institute'].map((name) => (
+              <div key={name} className="landing-trusted-logo" aria-hidden>
+                <span>{name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Bell, Palette, Shield } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 import './Settings.css';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'appearance' | 'security'>('profile');
+  const { theme, setTheme } = useTheme();
 
   const tabs = [
     { id: 'profile' as const, icon: User, label: 'Profile' },
@@ -79,11 +81,16 @@ export default function Settings() {
               <h2>Appearance</h2>
               <div className="settings-form">
                 <label className="label">Theme</label>
-                <select className="input">
-                  <option>Light</option>
-                  <option>Dark</option>
-                  <option>System</option>
+                <select
+                  className="input"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">System</option>
                 </select>
+                <p className="settings-hint">System follows your device preference.</p>
               </div>
             </>
           )}

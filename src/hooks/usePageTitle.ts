@@ -18,5 +18,7 @@ const routeTitles: Record<string, { title: string; subtitle?: string }> = {
 
 export function usePageTitle() {
   const { pathname } = useLocation();
+  if (pathname.startsWith('/app/patients/') && pathname !== '/app/patients') return { title: 'Patient details', subtitle: 'View patient record' };
+  if (pathname.startsWith('/app/reports/') && pathname !== '/app/reports') return { title: 'Report', subtitle: 'View report' };
   return routeTitles[pathname] ?? { title: 'COROnet', subtitle: '' };
 }

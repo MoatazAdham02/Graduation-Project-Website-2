@@ -1,8 +1,15 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Search, Menu, Bell, User, Moon, Sun } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Menu, Bell, User, Moon, Sun, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import './Header.css';
+
+const MOCK_NOTIFICATIONS = [
+  { id: '1', title: 'Report ready', body: 'CT Chest — John Doe has been finalized.', time: '2 min ago', unread: true },
+  { id: '2', title: 'Case shared', body: 'Maria G. shared a case with you.', time: '1 hr ago', unread: true },
+  { id: '3', title: 'Analysis complete', body: 'AI analysis finished for MRI Brain.', time: 'Yesterday', unread: false },
+];
 
 type HeaderProps = {
   title?: string;
@@ -12,7 +19,25 @@ type HeaderProps = {
 export default function Header({ title, subtitle }: HeaderProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const { setTheme, resolvedTheme } = useTheme();
+  const navigate = useNavigate();
+  const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotificationsOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
 
   return (
     <motion.header
@@ -39,6 +64,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
       <div className="header-right">
         <div
           className={`header-search-wrap ${searchFocused ? 'header-search-focused' : ''}`}
+          title="Search patients and reports"
         >
           <Search size={18} className="header-search-icon" />
           <input
@@ -51,21 +77,107 @@ export default function Header({ title, subtitle }: HeaderProps) {
           />
         </div>
 
-        <button type="button" className="header-icon-btn" aria-label="Notifications">
-          <Bell size={20} />
-          <span className="header-badge">3</span>
-        </button>
         <button
           type="button"
           className="header-icon-btn"
-          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label="Notifications"
+          title="Notifications"
+          aria-expanded={notificationsOpen}
+          aria-haspopup="true"
+          onClick={() => { setNotificationsOpen((o) => !o); setProfileOpen(false); }}
         >
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          <Bell size={20} />
+          {unreadCount > 0 && <span className="header-badge">{unreadCount}</span>}
         </button>
-        <button type="button" className="header-avatar" aria-label="Profile">
-          <User size={20} />
+        <div className="header-dropdown-wrap" ref={notifRef}>
+          <AnimatePresence>
+            {notificationsOpen && (
+              <motion.div
+                className="header-dropdown header-dropdown-notifications card"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+                role="menu"
+                aria-label="Notifications"
+              >
+                <div className="header-dropdown-header">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <button type="button" className="header-dropdown-action" onClick={markAllRead}>
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <ul className="header-notifications-list">
+                  {notifications.map((n) => (
+                    <li key={n.id} className={`header-notification-item ${n.unread ? 'header-notification-unread' : ''}`}>
+                      <div className="header-notification-title">{n.title}</div>
+                      <div className="header-notification-body">{n.body}</div>
+                      <div className="header-notification-time">{n.time}</div>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/app/notifications" className="header-dropdown-footer" onClick={() => setNotificationsOpen(false)}>
+                  View all notifications
+                </Link>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <button
+          type="button"
+          className="header-icon-btn"
+          aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+        >
+          {resolvedTheme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
+        <div className="header-dropdown-wrap header-avatar-wrap" ref={profileRef}>
+          <button
+            type="button"
+            className="header-avatar"
+            aria-label="Profile menu"
+            title="Profile menu"
+            aria-expanded={profileOpen}
+            aria-haspopup="true"
+            onClick={() => { setProfileOpen((o) => !o); setNotificationsOpen(false); }}
+          >
+            <User size={20} />
+          </button>
+          <AnimatePresence>
+            {profileOpen && (
+              <motion.div
+                className="header-dropdown header-dropdown-profile card"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+                role="menu"
+                aria-label="Profile menu"
+              >
+                <Link to="/app/settings" className="header-profile-item" onClick={() => setProfileOpen(false)}>
+                  <User size={18} />
+                  <span>Profile</span>
+                </Link>
+                <Link to="/app/settings" className="header-profile-item" onClick={() => setProfileOpen(false)}>
+                  <Settings size={18} />
+                  <span>Settings</span>
+                </Link>
+                <button
+                  type="button"
+                  className="header-profile-item header-profile-item-logout"
+                  onClick={() => { setProfileOpen(false); navigate('/'); }}
+                >
+                  <LogOut size={18} />
+                  <span>Sign out</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.header>
   );

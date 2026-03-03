@@ -177,6 +177,38 @@
   z-index: 1;
 }
 
+.landing-trusted {
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.landing-trusted-label {
+  text-align: center;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin: 0 0 1rem;
+}
+.landing-trusted-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+}
+.landing-trusted-logo {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-border-strong);
+  opacity: 0.8;
+}
+.landing-trusted-logo span {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
 /* Hero */
 .landing-hero {
   padding: 4rem 0 5rem;
