@@ -1,18 +1,18 @@
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, Shield, Zap, BarChart3, Users, FileSearch, LayoutGrid, Stethoscope, Building2, FlaskConical, Lock, Server, ShieldCheck, ArrowUp } from 'lucide-react';
+import { ArrowRight, Shield, Zap, BarChart3, Users, FileSearch, LayoutGrid, Stethoscope, Building2, FlaskConical, Lock, Server, ShieldCheck, ArrowUp, Heart, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import './Landing.css';
 
 const landingStats = [
-  { value: '10K+', label: 'Scans analyzed' },
-  { value: '50+', label: 'Healthcare partners' },
+  { value: '10K+', label: 'Cardiac scans analyzed' },
+  { value: '50+', label: 'Cardiology departments' },
   { value: '98%', label: 'Accuracy rate' },
 ];
 
 const testimonials = [
-  { quote: 'COROnet cut our report turnaround by half. The AI triage is a game-changer.', role: 'Lead Radiologist', org: 'Metro General' },
-  { quote: 'Finally, one platform for our reading room and research. Seamless DICOM workflow.', role: 'Imaging Director', org: 'University Hospital' },
+  { quote: 'COROnet cut our cardiac report turnaround by half. The AI triage is a game-changer.', role: 'Director of Cardiac Imaging', org: 'Metro Heart Institute' },
+  { quote: 'Finally, one platform for echo, cardiac CT, and MRI. Seamless workflow for our heart center.', role: 'Lead Cardiologist', org: 'University Cardiac Care' },
 ];
 
 export default function Landing() {
@@ -34,7 +34,7 @@ export default function Landing() {
       <nav className="landing-nav" aria-label="Main navigation">
         <div className="container landing-nav-inner">
           <div className="landing-logo">
-            <span className="landing-logo-icon" aria-hidden>◉</span>
+            <Heart size={24} className="landing-logo-icon" aria-hidden />
             <span>COROnet</span>
           </div>
           <div className={`landing-nav-links ${navOpen ? 'landing-nav-links-open' : ''}`} id="landing-nav-links" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) closeNav(); }}>
@@ -66,7 +66,7 @@ export default function Landing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             >
-              AI-Powered Medical Imaging
+              AI-Powered Cardiac Imaging
             </motion.span>
             <motion.h1
               id="landing-hero-heading"
@@ -81,7 +81,7 @@ export default function Landing() {
                 },
               }}
             >
-              {'Clinical-grade analysis for every scan'.split(' ').map((word, i) => (
+              {'Clinical-grade cardiac analysis for every scan'.split(' ').map((word, i) => (
                 <motion.span
                   key={i}
                   className="landing-hero-title-word"
@@ -100,8 +100,8 @@ export default function Landing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5, ease: 'easeOut' }}
             >
-              Upload, analyze, and collaborate on medical imaging with intelligent
-              tools built for healthcare teams. Fast, secure, and compliant.
+              From echo and cardiac CT to MRI—one platform for heart imaging
+              and AI-assisted reporting. Fast, secure, and compliant.
             </motion.p>
             <motion.div
               className="landing-hero-actions"
@@ -154,9 +154,9 @@ export default function Landing() {
 
       <section className="landing-trusted" aria-label="Trusted by">
         <div className="container">
-          <p className="landing-trusted-label">Trusted by healthcare teams worldwide</p>
+          <p className="landing-trusted-label">Trusted by cardiac care teams worldwide</p>
           <div className="landing-trusted-logos">
-            {['Metro General', 'University Hospital', 'Valley Medical', 'Research Institute'].map((name) => (
+            {['Heart & Vascular Institute', 'National Cardiology Center', 'Metro Cardiac Care', 'Valley Heart Center'].map((name) => (
               <div key={name} className="landing-trusted-logo" aria-hidden>
                 <span>{name}</span>
               </div>
@@ -187,16 +187,16 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            Everything you need for medical imaging
+            Everything you need for cardiac imaging
           </motion.h2>
           <div className="landing-cards">
             {[
-              { icon: Zap, title: 'Fast analysis', text: 'AI-assisted detection and segmentation in seconds.' },
-              { icon: BarChart3, title: 'Analytics & reports', text: 'Trends, comparisons, and exportable reports.' },
-              { icon: Users, title: 'Team collaboration', text: 'Share cases, annotate, and discuss with colleagues.' },
-              { icon: Shield, title: 'Secure & compliant', text: 'HIPAA-ready infrastructure and encryption.' },
-              { icon: FileSearch, title: 'DICOM support', text: 'Full DICOM workflow with PACS integration.' },
-              { icon: LayoutGrid, title: 'Multi-modality', text: 'CT, MRI, X-ray, and more in one platform.' },
+              { icon: Zap, title: 'Fast cardiac analysis', text: 'AI-assisted detection and segmentation for echo and cardiac CT in seconds.' },
+              { icon: BarChart3, title: 'Cardiac analytics & reports', text: 'EF, volumes, and trends. Exportable reports for cardiology workflows.' },
+              { icon: Users, title: 'Team collaboration', text: 'Share cardiac cases, annotate, and discuss with your heart team.' },
+              { icon: Shield, title: 'Secure & compliant', text: 'HIPAA-ready infrastructure for sensitive cardiac data.' },
+              { icon: FileSearch, title: 'Cardiac DICOM & PACS', text: 'Full DICOM workflow for echo, cardiac CT, and MRI with PACS integration.' },
+              { icon: LayoutGrid, title: 'Multi-modality cardiac', text: 'Echo, cardiac CT, cardiac MRI, and more in one platform.' },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -215,6 +215,30 @@ export default function Landing() {
                 >
                   <item.icon size={24} />
                 </motion.div>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="cardiac-care" className="landing-section landing-section-alt" aria-labelledby="cardiac-care-heading">
+        <div className="container">
+          <motion.h2 id="cardiac-care-heading" className="landing-section-title" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            Built for cardiac care
+          </motion.h2>
+          <p className="landing-section-desc">
+            One platform for coronary, structural, and functional heart imaging—from detection to reporting.
+          </p>
+          <div className="landing-cards landing-cards-three">
+            {[
+              { icon: Activity, title: 'Coronary & calcium', text: 'Cardiac CT and calcium scoring with AI-assisted plaque and stenosis assessment.' },
+              { icon: Heart, title: 'Echo & cardiac MRI', text: 'Echocardiography and cardiac MRI for function, structure, and viability.' },
+              { icon: BarChart3, title: 'Heart failure & beyond', text: 'Strain, volumes, and biomarkers in one workflow for heart disease management.' },
+            ].map((item, i) => (
+              <motion.div key={item.title} className="landing-card card" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} whileHover={{ y: -4, scale: 1.02, boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.15)' }} whileTap={{ scale: 0.99 }}>
+                <motion.div className="landing-card-icon" whileHover={{ scale: 1.1, rotate: 5 }} transition={{ type: 'spring', stiffness: 700, damping: 25 }}><item.icon size={24} /></motion.div>
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
               </motion.div>
@@ -245,7 +269,7 @@ export default function Landing() {
 
       <section className="landing-section landing-testimonials" aria-labelledby="testimonials-heading">
         <div className="container">
-          <motion.h2 id="testimonials-heading" className="landing-section-title" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Trusted by healthcare teams</motion.h2>
+          <motion.h2 id="testimonials-heading" className="landing-section-title" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Trusted by cardiology teams</motion.h2>
           <div className="landing-testimonials-grid">
             {testimonials.map((t, i) => (
               <motion.blockquote key={i} className="landing-testimonial card" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
@@ -263,13 +287,13 @@ export default function Landing() {
             Built for your workflow
           </motion.h2>
           <p className="landing-section-desc">
-            From reading rooms to research labs—COROnet scales with your needs.
+            From cardiac reading rooms to heart research—COROnet scales with your needs.
           </p>
           <div className="landing-cards landing-cards-three">
             {[
-              { icon: Stethoscope, title: 'Radiologists', text: 'Streamlined reading lists, hanging protocols, and AI triage.' },
-              { icon: Building2, title: 'Clinics & hospitals', text: 'Deploy across departments with centralized management.' },
-              { icon: FlaskConical, title: 'Research', text: 'Export datasets, run studies, and integrate with your pipeline.' },
+              { icon: Stethoscope, title: 'Cardiologists', text: 'Streamlined cardiac reading lists, protocols, and AI triage for echo and CT.' },
+              { icon: Building2, title: 'Heart centers & hospitals', text: 'Deploy across cath lab, echo lab, and imaging with one platform.' },
+              { icon: FlaskConical, title: 'Cardiac research', text: 'Export datasets, run studies, and integrate with your research pipeline.' },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -300,7 +324,7 @@ export default function Landing() {
         <div className="container">
           <motion.div className="landing-cta-box" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <h2 className="landing-cta-box-title">Ready to get started?</h2>
-            <p className="landing-cta-box-desc">Join healthcare teams using COROnet for clinical-grade imaging analysis.</p>
+            <p className="landing-cta-box-desc">Join cardiac care teams using COROnet for clinical-grade heart imaging analysis.</p>
             <Link to="/signup" className="btn btn-primary landing-cta">Start free trial <ArrowRight size={18} /></Link>
           </motion.div>
         </div>
@@ -309,7 +333,7 @@ export default function Landing() {
       <footer className="landing-footer">
         <div className="container">
           <div className="landing-footer-inner">
-            <span>© COROnet. For clinical use only.</span>
+            <span>© COROnet. Cardiac imaging and AI for heart disease. For clinical use only.</span>
             <div className="landing-footer-links">
               <Link to="/privacy">Privacy</Link>
               <Link to="/terms">Terms</Link>

@@ -6,16 +6,16 @@ import EmptyState from '../../components/EmptyState';
 import './Dashboard.css';
 
 const stats = [
-  { label: 'Scans today', value: '24', icon: Activity, change: '+12%', color: 'primary' },
+  { label: 'Cardiac studies today', value: '24', icon: Activity, change: '+12%', color: 'primary' },
   { label: 'Active patients', value: '156', icon: Users, change: '+5', color: 'accent' },
-  { label: 'Reports generated', value: '89', icon: FileText, change: '+18%', color: 'success' },
+  { label: 'Echo reports generated', value: '89', icon: FileText, change: '+18%', color: 'success' },
   { label: 'Analysis accuracy', value: '98.2%', icon: TrendingUp, change: '+0.4%', color: 'info' },
 ];
 
 const recent = [
-  { id: '1', patient: 'John D.', type: 'CT Chest', date: '2 min ago', status: 'Completed' },
-  { id: '2', patient: 'Maria L.', type: 'MRI Brain', date: '15 min ago', status: 'Analyzing' },
-  { id: '3', patient: 'Robert K.', type: 'X-Ray Spine', date: '1 hr ago', status: 'Completed' },
+  { id: '1', patient: 'John D.', type: 'Echo', date: '2 min ago', status: 'Completed' },
+  { id: '2', patient: 'Maria L.', type: 'Cardiac CT', date: '15 min ago', status: 'Analyzing' },
+  { id: '3', patient: 'Robert K.', type: 'Cardiac MRI', date: '1 hr ago', status: 'Completed' },
 ];
 
 function StatSkeleton() {

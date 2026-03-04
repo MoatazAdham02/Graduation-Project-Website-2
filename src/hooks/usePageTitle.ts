@@ -1,12 +1,12 @@
 import { useLocation } from 'react-router-dom';
 
 const routeTitles: Record<string, { title: string; subtitle?: string }> = {
-  '/app': { title: 'Dashboard', subtitle: 'Overview of your activity' },
+  '/app': { title: 'Dashboard', subtitle: 'Cardiac imaging platform' },
   '/app/patients': { title: 'Patients', subtitle: 'Manage patient records' },
-  '/app/upload': { title: 'Upload Scan', subtitle: 'Upload medical imaging' },
-  '/app/analysis': { title: 'Analysis Studio', subtitle: 'AI-powered analysis' },
+  '/app/upload': { title: 'Upload Scan', subtitle: 'Upload cardiac imaging' },
+  '/app/analysis': { title: 'Analysis Studio', subtitle: 'AI-powered cardiac analysis' },
   '/app/reports': { title: 'Reports', subtitle: 'View and export reports' },
-  '/app/compare': { title: 'Compare', subtitle: 'Compare scans side by side' },
+  '/app/compare': { title: 'Compare', subtitle: 'Compare cardiac studies' },
   '/app/share': { title: 'Share Case', subtitle: 'Collaborate with colleagues' },
   '/app/annotation': { title: 'Annotation', subtitle: 'Annotate and markup' },
   '/app/analytics': { title: 'Analytics', subtitle: 'Insights and trends' },

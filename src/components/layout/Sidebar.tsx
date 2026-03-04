@@ -14,7 +14,7 @@ import {
   Settings,
   Bell,
   HelpCircle,
-  Stethoscope,
+  Heart,
   LogOut,
   PanelLeftClose,
   PanelLeft,
@@ -54,7 +54,7 @@ export default function Sidebar() {
     >
       <div className="sidebar-brand">
         <div className="sidebar-logo">
-          <Stethoscope size={28} strokeWidth={2} />
+          <Heart size={28} strokeWidth={2} />
         </div>
         <span className="sidebar-title">COROnet</span>
       </div>

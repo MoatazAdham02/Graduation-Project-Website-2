@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Stethoscope } from 'lucide-react';
+import { Mail, Lock, Heart } from 'lucide-react';
 import './Auth.css';
 
 export default function Login() {
@@ -40,7 +40,7 @@ export default function Login() {
       >
         <div className="auth-brand">
           <div className="auth-logo">
-            <Stethoscope size={32} />
+            <Heart size={32} />
           </div>
           <h1>COROnet</h1>
           <p>Sign in to your account</p>
