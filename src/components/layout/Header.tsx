@@ -5,6 +5,7 @@ import { Search, Menu, Bell, User, Moon, Sun, Settings, LogOut } from 'lucide-re
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './Header.css';
 
@@ -29,6 +30,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { confirm } = useConfirm();
+  const { logout } = useAuth();
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
       message: 'Are you sure you want to sign out?',
       confirmLabel: 'Sign out',
       variant: 'danger',
-      onConfirm: () => { setProfileOpen(false); navigate('/'); addToast('info', 'You have signed out'); },
+      onConfirm: () => { setProfileOpen(false); logout(); navigate('/login'); addToast('info', 'You have signed out'); },
     });
   };
 

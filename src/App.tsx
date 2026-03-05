@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
+import { AuthProvider } from './contexts/AuthContext';
 import AppLayout from './components/layout/AppLayout';
+import ProtectedLayout from './components/ProtectedLayout';
 import LoadingBar from './components/LoadingBar';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
@@ -36,10 +38,11 @@ import SkipLink from './components/SkipLink';
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
+    <ThemeProvider>
         <ToastProvider>
           <ConfirmProvider>
-            <BrowserRouter>
+            <AuthProvider>
+    <BrowserRouter>
               <OfflineBanner />
               <LoadingBar />
               <SkipLink />
@@ -51,7 +54,8 @@ function App() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/app" element={<AppLayout />}>
+        <Route path="/app" element={<ProtectedLayout />}>
+          <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
           <Route path="patients/:id" element={<PatientDetail />} />
@@ -70,9 +74,11 @@ function App() {
           <Route path="search" element={<SearchPage />} />
           <Route path="status" element={<Status />} />
         </Route>
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+            </AuthProvider>
     </ConfirmProvider>
     </ToastProvider>
     </ThemeProvider>

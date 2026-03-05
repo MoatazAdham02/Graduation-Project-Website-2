@@ -1,0 +1,139 @@
+================================================================================
+MongoDB Atlas — Steps to Connect MongoDB to Your Website (Using Clusters)
+================================================================================
+
+--------------------------------------------------------------------------------
+1. CREATE A MONGODB ATLAS ACCOUNT
+--------------------------------------------------------------------------------
+  • Go to: https://www.mongodb.com/cloud/atlas
+  • Click "Try Free" or "Start Free"
+  • Sign up with Google or Email and complete registration
+  • Log in to the Atlas dashboard
+
+--------------------------------------------------------------------------------
+2. CREATE A CLUSTER
+--------------------------------------------------------------------------------
+  • In the Atlas UI, click "Build a Database" or "Create"
+  • Choose "M0 FREE" (shared, free tier)
+  • Select a cloud provider and region (e.g. AWS, region near you)
+  • Leave "Cluster Name" as Cluster0 or set one (e.g. coronet-cluster)
+  • Click "Create" and wait until the cluster status is "Available" (green)
+
+--------------------------------------------------------------------------------
+3. CREATE A DATABASE USER (for your app to log in)
+--------------------------------------------------------------------------------
+  • In the cluster view, go to the "Security" tab or click "Database Access" in the left sidebar
+  • Click "Add New Database User"
+  • Authentication Method: Password
+  • Username: e.g. coronet_app (or any name you like)
+  • Password: either "Autogenerate" (copy and save it) or set your own strong password
+  • Database User Privileges: choose "Read and write to any database" (or "Atlas admin" for dev)
+  • Click "Add User"
+
+--------------------------------------------------------------------------------
+4. ALLOW YOUR APP'S IP (network access)
+--------------------------------------------------------------------------------
+  • In the left sidebar click "Network Access" (under Security)
+  • Click "Add IP Address"
+  • For local development:
+    - Click "Add Current IP Address" (adds your current IP), OR
+    - For "allow from anywhere" (dev only): click "Allow Access from Anywhere" — this sets 0.0.0.0/0
+  • Confirm with "Add" or "Confirm"
+
+--------------------------------------------------------------------------------
+5. GET THE CONNECTION STRING
+--------------------------------------------------------------------------------
+  • Go back to "Database" in the left sidebar
+  • On your cluster card click "Connect"
+  • Choose "Drivers" (or "Connect your application")
+  • Driver: Node.js. Version: 5.5 or later (or latest shown)
+  • Copy the connection string. It looks like:
+      mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+  • Replace <username> with your database user (e.g. coronet_app)
+  • Replace <password> with that user's password.
+    If the password has special characters (e.g. #, @, %), URL-encode them (# → %23, @ → %40)
+
+--------------------------------------------------------------------------------
+6. ADD THE DATABASE NAME TO THE URI
+--------------------------------------------------------------------------------
+  • After the host part, add your database name before the ?:
+    From:  mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+    To:    mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/coronet?retryWrites=true&w=majority
+  • "coronet" is the database name your app will use (you can change it)
+
+--------------------------------------------------------------------------------
+7. PUT THE URI IN YOUR BACKEND
+--------------------------------------------------------------------------------
+  • In your Backend folder, create or open .env (do not commit this file)
+  • Add or update:
+      MONGODB_URI=mongodb+srv://coronet_app:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/coronet?retryWrites=true&w=majority
+    (Use your real username, password, and cluster host from steps 5–6.)
+  • In .env.example (safe to commit), use a placeholder:
+      MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER_HOST/coronet?retryWrites=true&w=majority
+
+--------------------------------------------------------------------------------
+8. CONNECT IN CODE (Backend)
+--------------------------------------------------------------------------------
+  • In config/db.js (or equivalent):
+    - Use mongoose.connect(process.env.MONGODB_URI)
+    - Handle success (e.g. console.log('MongoDB connected')) and errors (e.g. console.error(err))
+  • In server.js:
+    - Call your connect function (e.g. await connectDB()) before app.listen(PORT)
+    - Ensure dotenv.config() runs at the top so process.env.MONGODB_URI is set
+
+  Example pattern:
+
+  // config/db.js
+  import mongoose from 'mongoose';
+
+  export async function connectDB() {
+    try {
+      await mongoose.connect(process.env.MONGODB_URI);
+      console.log('MongoDB connected');
+    } catch (err) {
+      console.error('MongoDB connection error:', err);
+      process.exit(1);
+    }
+  }
+
+  // server.js (top)
+  import dotenv from 'dotenv';
+  dotenv.config();
+
+  import { connectDB } from './config/db.js';
+  // ... other imports
+
+  // Before listen:
+  await connectDB();
+  app.listen(PORT, () => console.log('Server on port ' + PORT));
+
+--------------------------------------------------------------------------------
+9. VERIFY THE CONNECTION
+--------------------------------------------------------------------------------
+  • Start the backend (e.g. npm run dev or node server.js from the Backend folder)
+  • You should see "MongoDB connected" in the console
+  • In Atlas: Database → Browse Collections. After your app creates data (e.g. first user),
+    you'll see the coronet database and collections (e.g. users)
+
+--------------------------------------------------------------------------------
+CHECKLIST
+--------------------------------------------------------------------------------
+  [ ] Atlas account created
+  [ ] Cluster created (M0 FREE) and status "Available"
+  [ ] Database user created (username + password saved)
+  [ ] Network Access: your IP or 0.0.0.0/0 added
+  [ ] Connection string copied and <username> / <password> replaced
+  [ ] Database name (e.g. /coronet) added to URI before ?
+  [ ] MONGODB_URI set in Backend .env
+  [ ] Backend calls mongoose.connect(process.env.MONGODB_URI) at startup
+  [ ] Backend starts and logs "MongoDB connected"
+
+--------------------------------------------------------------------------------
+COMMON ISSUES
+--------------------------------------------------------------------------------
+  • "Authentication failed" — Wrong username/password in the URI, or password not URL-encoded
+  • "Connection timeout" / "network error" — Your IP not in Network Access, or firewall blocking
+  • "MONGODB_URI is undefined" — .env not loaded (ensure dotenv.config() is at the very top
+    of your entry file before any code that uses process.env)
+
+================================================================================

@@ -2,17 +2,19 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Heart } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import './Auth.css';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,11 +31,15 @@ export default function Signup() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await register(name.trim(), email.trim(), password);
       const done = localStorage.getItem('coronet-onboarding-done');
       navigate(done ? '/app' : '/onboarding');
-    }, 600);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Create account failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
