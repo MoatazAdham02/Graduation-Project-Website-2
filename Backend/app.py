@@ -1,53 +1,75 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS  # Mohem gedan 3ashan sa7bak el Frontend yعرف y-access
+import os
+import io
+import gdown
 import torch
 import pydicom
-import io
-from model_arch import MyMedicalModel # Ben-nadé el hekal
+import numpy as np
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from model_arch import MyMedicalModel  # Ben-nadé el-hekal men el-file el-tany
 
 app = Flask(__name__)
-CORS(app) # Btesma7 lel Frontend ykalem el Backend
+CORS(app) # 3ashan sa7bak el-frontend ye2dar y-kalem el-backend
 
-# --- 1. Load el Model ---
+# --- 1. Download & Load el-Model ---
+MODEL_PATH = "backend/models/my_model.pth"
+FILE_ID = "1GK0j_CFbwFnO-bRuuTGa9_nLZvQmchte"
+URL = f'https://drive.google.com/uc?id={FILE_ID}'
+
+if not os.path.exists(MODEL_PATH):
+    print("Downloading model from Google Drive... Please wait.")
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    gdown.download(URL, MODEL_PATH, quiet=False)
+
 device = torch.device("cpu")
 model = MyMedicalModel()
-model.load_state_dict(torch.load("models/my_model.pth", map_location=device))
+# Load el-weights gowa el-hekal
+model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.eval()
 
-# --- 2. Function el Pre-processing ---
-def transform_dicom(pixel_array):
-    # Hena lazem t-resize el sora w t7awelha le Tensor
-    # Masalan:
+# --- 2. Function le-tazbit el-sora (Pre-processing) ---
+def preprocess_dicom(pixel_array):
+    # Hena lazem t-resize el-sora 7asab el-model m-met3awed
+    # Da mital saree3:
     img = torch.tensor(pixel_array).float().unsqueeze(0).unsqueeze(0)
     return img
 
+# --- 3. Route el-Upload wel Prediction ---
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
-        return jsonify({"error": "No file"}), 400
+        return jsonify({"error": "No file uploaded"}), 400
     
     file = request.files['file']
     
-    # A. Read DICOM
-    ds = pydicom.dcmread(io.BytesIO(file.read()))
-    img_data = ds.pixel_array
-    
-    # B. Process Image
-    input_tensor = transform_dicom(img_data)
-    
-    # C. Model Prediction
-    with torch.no_grad():
-        output = model(input_tensor)
-        prediction = torch.argmax(output).item()
-    
-    # D. Return Report
-    # Momken te3mel Dictionary lel nata'eg
-    results_map = {0: "Normal", 1: "Problem Detected"}
-    return jsonify({
-        "status": "success",
-        "label": results_map.get(prediction, "Unknown"),
-        "details": "The model analyzed the DICOM patterns..."
-    })
+    try:
+        # A. Read DICOM
+        ds = pydicom.dcmread(io.BytesIO(file.read()))
+        pixel_data = ds.pixel_array
+        
+        # B. Pre-process
+        input_tensor = preprocess_dicom(pixel_data)
+        
+        # C. Predict
+        with torch.no_grad():
+            output = model(input_tensor)
+            prediction = torch.argmax(output).item()
+        
+        # D. Results (T7wel el-arqam le-kalam)
+        labels = {0: "Normal", 1: "Abnormal/Problem Detected"}
+        result_text = labels.get(prediction, "Unknown")
+
+        return jsonify({
+            "status": "success",
+            "prediction": prediction,
+            "label": result_text,
+            "report": f"The AI model analysis indicates: {result_text}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    # Render hay-estakhdem el-port da automatic
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
