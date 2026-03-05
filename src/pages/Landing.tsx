@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, Shield, Zap, BarChart3, Users, FileSearch, LayoutGrid, Stethoscope, Building2, FlaskConical, Lock, Server, ShieldCheck, ArrowUp, Heart, Activity } from 'lucide-react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Shield, Zap, BarChart3, Users, FileSearch, LayoutGrid, Stethoscope, Building2, FlaskConical, Lock, Server, ShieldCheck, ArrowUp, Heart, Activity, MessageCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import './Landing.css';
 
@@ -20,6 +20,7 @@ export default function Landing() {
   const heroVisualY = useTransform(scrollY, [0, 400], [0, 80]);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   useEffect(() => {
     const onScroll = () => setShowBackToTop(window.scrollY > 600);
     window.addEventListener('scroll', onScroll);
@@ -39,6 +40,7 @@ export default function Landing() {
           </div>
           <div className={`landing-nav-links ${navOpen ? 'landing-nav-links-open' : ''}`} id="landing-nav-links" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) closeNav(); }}>
             <motion.a href="#features" className="landing-nav-link" whileHover={{ opacity: 1 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.1 }}>Features</motion.a>
+            <motion.a href="#pricing" className="landing-nav-link" whileHover={{ opacity: 1 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.1 }}>Pricing</motion.a>
             <motion.a href="#security" className="landing-nav-link" whileHover={{ opacity: 1 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.1 }}>Security</motion.a>
             <Link to="/login" className="landing-nav-login landing-nav-link">Log in</Link>
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.1 }}>
@@ -320,11 +322,32 @@ export default function Landing() {
         </div>
       </section>
 
+      <section id="pricing" className="landing-section landing-section-alt" aria-labelledby="pricing-heading">
+        <div className="container">
+          <motion.h2 id="pricing-heading" className="landing-section-title" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>Plans</motion.h2>
+          <p className="landing-section-desc">Simple pricing for teams of any size.</p>
+          <div className="landing-pricing-grid">
+            {[
+              { name: 'Free', desc: 'Up to 50 scans/month', cta: 'Get started' },
+              { name: 'Pro', desc: 'Unlimited scans, priority support', cta: 'Start trial', highlight: true },
+              { name: 'Enterprise', desc: 'Custom SLAs, on-prem option', cta: 'Contact sales' },
+            ].map((plan) => (
+              <motion.div key={plan.name} className={`card landing-pricing-card ${plan.highlight ? 'landing-pricing-card--highlight' : ''}`} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                <h3>{plan.name}</h3>
+                <p>{plan.desc}</p>
+                <Link to="/signup" className="btn btn-primary">{plan.cta}</Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="landing-cta-section">
         <div className="container">
           <motion.div className="landing-cta-box" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <h2 className="landing-cta-box-title">Ready to get started?</h2>
             <p className="landing-cta-box-desc">Join cardiac care teams using COROnet for clinical-grade heart imaging analysis.</p>
+            <p className="landing-cta-demo"><a href="#features">See how it works</a></p>
             <Link to="/signup" className="btn btn-primary landing-cta">Start free trial <ArrowRight size={18} /></Link>
           </motion.div>
         </div>
@@ -335,6 +358,7 @@ export default function Landing() {
           <div className="landing-footer-inner">
             <span>© COROnet. Cardiac imaging and AI for heart disease. For clinical use only.</span>
             <div className="landing-footer-links">
+              <a href="#features">Resources</a>
               <Link to="/privacy">Privacy</Link>
               <Link to="/terms">Terms</Link>
             </div>
@@ -347,6 +371,24 @@ export default function Landing() {
           <ArrowUp size={20} />
         </motion.a>
       )}
+
+      <div className="landing-chat">
+        <button type="button" className="landing-chat-btn" onClick={() => setChatOpen((o) => !o)} aria-label={chatOpen ? 'Close chat' : 'Open chat'}>
+          <MessageCircle size={24} />
+        </button>
+        {chatOpen && (
+          <AnimatePresence>
+          <motion.div className="landing-chat-panel card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+            <div className="landing-chat-panel-header">
+              <span>Chat</span>
+              <button type="button" className="landing-chat-close" onClick={() => setChatOpen(false)} aria-label="Close"><X size={18} /></button>
+            </div>
+            <p className="landing-chat-msg">Hi! How can we help?</p>
+            <p className="landing-chat-hint">Send a message or email support@coronet.app</p>
+          </motion.div>
+          </AnimatePresence>
+        )}
+      </div>
       </main>
     </div>
   );

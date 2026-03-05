@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { HelpCircle, Book, MessageCircle, Mail, Upload, FileText, Share2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import './Help.css';
 
 const topics = [
@@ -102,6 +103,12 @@ export default function Help() {
         transition={{ delay: 0.2 }}
       >
         <h2>Frequently asked</h2>
+        <p className="help-shortcuts-hint">
+          <button type="button" className="help-shortcuts-btn" onClick={() => window.dispatchEvent(new Event('open-keyboard-shortcuts'))}>
+            View keyboard shortcuts
+          </button>
+          {' '}— Press <kbd>?</kbd> anywhere to open the shortcuts panel.
+        </p>
         <dl className="help-faq-list">
           <dt>How do I upload a DICOM study?</dt>
           <dd>Go to Upload Scan and drag files or use the file picker. We support .dcm, .nii, and common image formats.</dd>
@@ -110,6 +117,23 @@ export default function Help() {
           <dt>Can I share a case with a colleague?</dt>
           <dd>Use Share Case to generate a link or send an email invite. You can set expiration and download permissions.</dd>
         </dl>
+      </motion.section>
+
+      <motion.section
+        className="card help-changelog"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <h2>What&apos;s new</h2>
+        <ul className="help-changelog-list">
+          <li><strong>v1.2.0</strong> — Search page. Toasts, confirm dialogs, offline banner.</li>
+          <li><strong>v1.1.0</strong> — Keyboard shortcuts panel. Status page.</li>
+          <li><strong>v1.0.0</strong> — Initial release. Upload, analysis, reports, compare, and sharing.</li>
+        </ul>
+        <p className="help-status-link">
+          <Link to="/app/status">View system status</Link>
+        </p>
       </motion.section>
     </div>
   );

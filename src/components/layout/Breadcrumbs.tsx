@@ -16,6 +16,8 @@ const pathLabels: Record<string, string> = {
   'settings': 'Settings',
   'notifications': 'Notifications',
   'help': 'Help',
+  'search': 'Search',
+  'status': 'Status',
 };
 
 export default function Breadcrumbs() {

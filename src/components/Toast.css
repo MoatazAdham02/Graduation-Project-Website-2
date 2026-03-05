@@ -1,0 +1,79 @@
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 360px;
+  pointer-events: none;
+}
+
+.toast-container > * {
+  pointer-events: auto;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.toast--success {
+  border-left: 4px solid var(--color-success);
+}
+.toast--success .toast-icon {
+  color: var(--color-success);
+}
+
+.toast--error {
+  border-left: 4px solid var(--color-error);
+}
+.toast--error .toast-icon {
+  color: var(--color-error);
+}
+
+.toast--info {
+  border-left: 4px solid var(--color-info);
+}
+.toast--info .toast-icon {
+  color: var(--color-info);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.toast-dismiss {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.toast-dismiss:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+@media (max-width: 480px) {
+  .toast-container {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    max-width: none;
+  }
+}

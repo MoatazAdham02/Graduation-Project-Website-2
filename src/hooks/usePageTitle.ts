@@ -14,6 +14,8 @@ const routeTitles: Record<string, { title: string; subtitle?: string }> = {
   '/app/settings': { title: 'Settings', subtitle: 'Preferences and account' },
   '/app/notifications': { title: 'Notifications', subtitle: 'Alerts and updates' },
   '/app/help': { title: 'Help', subtitle: 'Documentation and support' },
+  '/app/search': { title: 'Search', subtitle: 'Patients and reports' },
+  '/app/status': { title: 'Status', subtitle: 'System status' },
 };
 
 export function usePageTitle() {

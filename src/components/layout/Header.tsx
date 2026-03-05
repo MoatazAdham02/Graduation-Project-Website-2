@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Menu, Bell, User, Moon, Sun, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './Header.css';
 
 const MOCK_NOTIFICATIONS = [
@@ -24,8 +27,14 @@ export default function Header({ title, subtitle }: HeaderProps) {
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const { setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(notifDropdownRef, notificationsOpen);
+  useFocusTrap(profileDropdownRef, profileOpen);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -37,7 +46,29 @@ export default function Header({ title, subtitle }: HeaderProps) {
   }, []);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const markAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    addToast('success', 'All notifications marked as read');
+  };
+
+  const handleSignOut = () => {
+    confirm({
+      title: 'Sign out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign out',
+      variant: 'danger',
+      onConfirm: () => { setProfileOpen(false); navigate('/'); addToast('info', 'You have signed out'); },
+    });
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const input = form.querySelector('input[type="search"]') as HTMLInputElement;
+    const q = input?.value?.trim() ?? '';
+    navigate(q ? `/app/search?q=${encodeURIComponent(q)}` : '/app/search');
+    input?.blur();
+  };
 
   return (
     <motion.header
@@ -62,9 +93,10 @@ export default function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="header-right">
-        <div
+        <form
           className={`header-search-wrap ${searchFocused ? 'header-search-focused' : ''}`}
           title="Search patients and reports"
+          onSubmit={handleSearchSubmit}
         >
           <Search size={18} className="header-search-icon" />
           <input
@@ -75,7 +107,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
           />
-        </div>
+        </form>
 
         <button
           type="button"
@@ -93,6 +125,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
           <AnimatePresence>
             {notificationsOpen && (
               <motion.div
+                ref={notifDropdownRef}
                 className="header-dropdown header-dropdown-notifications card"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -150,6 +183,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
           <AnimatePresence>
             {profileOpen && (
               <motion.div
+                ref={profileDropdownRef}
                 className="header-dropdown header-dropdown-profile card"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -169,7 +203,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
                 <button
                   type="button"
                   className="header-profile-item header-profile-item-logout"
-                  onClick={() => { setProfileOpen(false); navigate('/'); }}
+                  onClick={handleSignOut}
                 >
                   <LogOut size={18} />
                   <span>Sign out</span>

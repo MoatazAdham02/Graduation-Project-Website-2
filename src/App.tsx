@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import AppLayout from './components/layout/AppLayout';
 import LoadingBar from './components/LoadingBar';
 import ErrorBoundary from './components/ErrorBoundary';
+import OfflineBanner from './components/OfflineBanner';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -26,16 +29,21 @@ import Settings from './pages/app/Settings';
 import Notifications from './pages/app/Notifications';
 import Help from './pages/app/Help';
 import NotFound from './pages/NotFound';
+import SearchPage from './pages/app/Search';
+import Status from './pages/app/Status';
 import SkipLink from './components/SkipLink';
 
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <BrowserRouter>
-          <LoadingBar />
-          <SkipLink />
-          <Routes>
+        <ToastProvider>
+          <ConfirmProvider>
+            <BrowserRouter>
+              <OfflineBanner />
+              <LoadingBar />
+              <SkipLink />
+              <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -59,10 +67,14 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="help" element={<Help />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="status" element={<Status />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </ConfirmProvider>
+    </ToastProvider>
     </ThemeProvider>
     </ErrorBoundary>
   );

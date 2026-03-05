@@ -93,6 +93,12 @@
   margin-bottom: 1rem;
 }
 
+.dashboard-last-login {
+  margin: 0 0 0.75rem;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .dashboard-section h2 {
   font-size: var(--text-lg);
   font-weight: 600;

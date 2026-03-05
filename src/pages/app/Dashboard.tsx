@@ -102,6 +102,7 @@ export default function Dashboard() {
               View all <ArrowUpRight size={16} />
             </Link>
           </div>
+          <p className="dashboard-last-login">Last sign-in: Today</p>
           {loading ? (
             <RecentListSkeleton />
           ) : recent.length === 0 ? (

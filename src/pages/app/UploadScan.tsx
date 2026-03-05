@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, FileImage, X } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './UploadScan.css';
 
 export default function UploadScan() {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -30,6 +34,21 @@ export default function UploadScan() {
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearAll = () => {
+    confirm({
+      title: 'Clear all files',
+      message: 'Remove all selected files from the upload list?',
+      confirmLabel: 'Clear all',
+      variant: 'danger',
+      onConfirm: () => { setFiles([]); addToast('info', 'Upload list cleared'); },
+    });
+  };
+
+  const handleStartUpload = () => {
+    addToast('success', `Upload started for ${files.length} file(s). Analysis will begin shortly.`);
+    setFiles([]);
   };
 
   return (
@@ -95,10 +114,10 @@ export default function UploadScan() {
             ))}
           </ul>
           <div className="upload-actions">
-            <button type="button" className="btn btn-secondary">
+            <button type="button" className="btn btn-secondary" onClick={handleClearAll}>
               Clear all
             </button>
-            <button type="button" className="btn btn-primary">
+            <button type="button" className="btn btn-primary" onClick={handleStartUpload}>
               Start upload & analyze
             </button>
           </div>

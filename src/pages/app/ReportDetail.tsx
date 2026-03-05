@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, Calendar, User, ArrowLeft, Printer } from 'lucide-react';
+import { Download, Calendar, User, ArrowLeft, Printer, Copy } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
 import './ReportDetail.css';
 
 const MOCK_REPORTS: Record<string, { title: string; date: string; type: string; status: string; findings: string; impression: string; aiSummary: string }> = {
@@ -15,8 +16,19 @@ const MOCK_REPORTS: Record<string, { title: string; date: string; type: string; 
 export default function ReportDetail() {
   const { id } = useParams<{ id: string }>();
   const report = id ? MOCK_REPORTS[id] : null;
+  const { addToast } = useToast();
 
   const handlePrint = () => window.print();
+
+  const handleExportPdf = () => {
+    addToast('success', 'Report exported as PDF');
+  };
+
+  const handleCopySummary = () => {
+    if (!report) return;
+    const text = `${report.findings}\n\nImpression: ${report.impression}\n\n${report.aiSummary}`;
+    navigator.clipboard.writeText(text).then(() => addToast('success', 'Summary copied to clipboard'));
+  };
 
   if (!report) {
     return (
@@ -47,7 +59,11 @@ export default function ReportDetail() {
               <Printer size={18} />
               Print
             </button>
-            <button type="button" className="btn btn-primary">
+            <button type="button" className="btn btn-ghost" onClick={handleCopySummary}>
+              <Copy size={18} />
+              Copy summary
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleExportPdf}>
               <Download size={18} />
               Export PDF
             </button>

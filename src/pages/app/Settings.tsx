@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Bell, Palette, Shield } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../../contexts/ToastContext';
 import './Settings.css';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'appearance' | 'security'>('profile');
   const { theme, setTheme } = useTheme();
+  const { addToast } = useToast();
 
   const tabs = [
     { id: 'profile' as const, icon: User, label: 'Profile' },
@@ -52,7 +54,7 @@ export default function Settings() {
                 <input type="text" className="input" placeholder="Dr. Jane Smith" />
                 <label className="label">Email</label>
                 <input type="email" className="input" placeholder="jane@hospital.org" />
-                <button type="button" className="btn btn-primary">Save changes</button>
+                <button type="button" className="btn btn-primary" onClick={() => addToast('success', 'Profile updated')}>Save changes</button>
               </div>
             </>
           )}
@@ -72,7 +74,7 @@ export default function Settings() {
                   <input type="checkbox" />
                   <span>Weekly digest</span>
                 </label>
-                <button type="button" className="btn btn-primary">Save</button>
+                <button type="button" className="btn btn-primary" onClick={() => addToast('success', 'Notification preferences saved')}>Save</button>
               </div>
             </>
           )}
@@ -102,7 +104,7 @@ export default function Settings() {
                 <input type="password" className="input" placeholder="••••••••" />
                 <label className="label">New password</label>
                 <input type="password" className="input" placeholder="••••••••" />
-                <button type="button" className="btn btn-primary">Update password</button>
+                <button type="button" className="btn btn-primary" onClick={() => addToast('success', 'Password updated')}>Update password</button>
               </div>
             </>
           )}

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import './KeyboardShortcuts.css';
-import './KeyboardShortcuts.css';
 
 const shortcuts = [
   { keys: ['Ctrl', 'K'], label: 'Focus search', macKeys: ['⌘', 'K'] },
@@ -34,6 +33,12 @@ export default function KeyboardShortcuts() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener('open-keyboard-shortcuts', onOpen);
+    return () => window.removeEventListener('open-keyboard-shortcuts', onOpen);
   }, []);
 
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);

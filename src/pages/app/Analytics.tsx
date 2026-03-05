@@ -45,9 +45,10 @@ export default function Analytics() {
       >
         <div className="analytics-chart-header">
           <h2>Scans over time</h2>
-          <select className="input analytics-chart-select">
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
+          <select className="input analytics-chart-select" defaultValue="7">
+            <option value="1">Today</option>
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
           </select>
         </div>
         <div className="analytics-chart">

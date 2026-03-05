@@ -20,17 +20,10 @@ export default function Reports() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const visible = allReports.slice(0, visibleCount);
   const hasMore = visibleCount < allReports.length;
+
   return (
     <div className="reports-page">
       <div className="reports-toolbar">
-        <div className="reports-filters">
-          <select className="input reports-filter">
-            <option>All types</option>
-          </select>
-          <select className="input reports-filter">
-            <option>All status</option>
-          </select>
-        </div>
         <button type="button" className="btn btn-primary">
           <Download size={18} />
           Export

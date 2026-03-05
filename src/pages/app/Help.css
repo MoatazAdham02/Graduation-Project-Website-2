@@ -141,6 +141,56 @@
   color: var(--color-text);
 }
 
+.help-shortcuts-hint {
+  margin: 0 0 1rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.help-shortcuts-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.help-shortcuts-btn:hover {
+  color: var(--color-primary-hover);
+}
+
+.help-changelog {
+  padding: 1.5rem;
+}
+
+.help-changelog h2 {
+  margin: 0 0 0.75rem;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.help-changelog-list {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.help-changelog-list li {
+  margin-bottom: 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.help-status-link {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.help-status-link a {
+  color: var(--color-primary);
+}
+
 .help-faq-list {
   margin: 0;
 }
