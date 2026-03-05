@@ -5,3 +5,4 @@ torchvision
 pydicom
 numpy
 gdown
+monai

@@ -1,75 +1,64 @@
-import os
-import io
-import gdown
-import torch
-import pydicom
+import os, io, gdown, torch, pydicom
 import numpy as np
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from model_arch import MyMedicalModel  # Ben-nadé el-hekal men el-file el-tany
+from model_arch import MyMedicalModel
 
 app = Flask(__name__)
-CORS(app) # 3ashan sa7bak el-frontend ye2dar y-kalem el-backend
+CORS(app)
 
-# --- 1. Download & Load el-Model ---
+# --- Load Model ---
 MODEL_PATH = "backend/models/my_model.pth"
 FILE_ID = "1GK0j_CFbwFnO-bRuuTGa9_nLZvQmchte"
 URL = f'https://drive.google.com/uc?id={FILE_ID}'
 
 if not os.path.exists(MODEL_PATH):
-    print("Downloading model from Google Drive... Please wait.")
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     gdown.download(URL, MODEL_PATH, quiet=False)
 
 device = torch.device("cpu")
 model = MyMedicalModel()
-# Load el-weights gowa el-hekal
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.eval()
 
-# --- 2. Function le-tazbit el-sora (Pre-processing) ---
-def preprocess_dicom(pixel_array):
-    # Hena lazem t-resize el-sora 7asab el-model m-met3awed
-    # Da mital saree3:
-    img = torch.tensor(pixel_array).float().unsqueeze(0).unsqueeze(0)
-    return img
-
-# --- 3. Route el-Upload wel Prediction ---
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
     
     file = request.files['file']
-    
     try:
-        # A. Read DICOM
+        # 1. قراءة الـ DICOM (Multi-frame)
         ds = pydicom.dcmread(io.BytesIO(file.read()))
-        pixel_data = ds.pixel_array
         
-        # B. Pre-process
-        input_tensor = preprocess_dicom(pixel_data)
+        # 2. استخراج الـ Slices كـ 3D Array
+        # pixel_array هنا هيكون أبعاده (Number of Slices, Height, Width)
+        volume = ds.pixel_array.astype(np.float32)
+
+        # 3. Normalization
+        volume = (volume - volume.min()) / (volume.max() - volume.min() + 1e-8)
         
-        # C. Predict
+        # 4. تظبيط الأبعاد للموديل الـ 3D (MONAI DenseNet)
+        # الموديل مستني (Batch, Channel, Depth, Height, Width)
+        # الـ Depth هنا هو عدد الـ Slices
+        input_tensor = torch.tensor(volume).unsqueeze(0).unsqueeze(0)
+        
+        # 5. التوقع (Prediction)
         with torch.no_grad():
             output = model(input_tensor)
             prediction = torch.argmax(output).item()
         
-        # D. Results (T7wel el-arqam le-kalam)
-        labels = {0: "Normal", 1: "Abnormal/Problem Detected"}
-        result_text = labels.get(prediction, "Unknown")
-
+        labels = {0: "Normal", 1: "Abnormal"}
         return jsonify({
             "status": "success",
-            "prediction": prediction,
-            "label": result_text,
-            "report": f"The AI model analysis indicates: {result_text}"
+            "prediction": labels.get(prediction),
+            "code": prediction,
+            "slices_processed": volume.shape[0] # عشان نتأكد إنه قرأ كل الـ Slices
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Render hay-estakhdem el-port da automatic
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
