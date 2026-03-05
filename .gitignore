@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Backend uploads (DICOM files)
+Backend/uploads/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

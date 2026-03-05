@@ -5,9 +5,12 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './UploadScan.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
 export default function UploadScan() {
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const { addToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -22,14 +25,22 @@ export default function UploadScan() {
     e.stopPropagation();
     setDragActive(false);
     const dropped = Array.from(e.dataTransfer.files).filter((f) =>
-      /\.(dcm|nii|nii\.gz|jpg|jpeg|png)$/i.test(f.name)
+      /\.(dcm|dicom)$/i.test(f.name)
     );
+    if (dropped.length < e.dataTransfer.files.length) {
+      addToast('info', 'Only DICOM files (.dcm, .dicom) are accepted. Other files were skipped.');
+    }
     setFiles((prev) => [...prev, ...dropped]);
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files ? Array.from(e.target.files) : [];
-    setFiles((prev) => [...prev, ...selected]);
+    const dicomOnly = selected.filter((f) => /\.(dcm|dicom)$/i.test(f.name));
+    if (dicomOnly.length < selected.length) {
+      addToast('info', 'Only DICOM files (.dcm, .dicom) are accepted.');
+    }
+    setFiles((prev) => [...prev, ...dicomOnly]);
+    e.target.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -46,9 +57,28 @@ export default function UploadScan() {
     });
   };
 
-  const handleStartUpload = () => {
-    addToast('success', `Upload started for ${files.length} file(s). Analysis will begin shortly.`);
-    setFiles([]);
+  const handleStartUpload = async () => {
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      files.forEach((f) => form.append('file', f));
+      const res = await fetch(`${API_URL}/api/scan/upload`, {
+        method: 'POST',
+        body: form
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        addToast('error', data.error || `Upload failed (${res.status})`);
+        return;
+      }
+      addToast('success', `${data.uploaded?.length ?? files.length} DICOM file(s) uploaded successfully.`);
+      setFiles([]);
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -67,7 +97,7 @@ export default function UploadScan() {
           type="file"
           id="upload-input"
           multiple
-          accept=".dcm,.nii,.nii.gz,.jpg,.jpeg,.png"
+          accept=".dcm,.dicom,application/dicom"
           onChange={handleFileInput}
           className="upload-input-hidden"
         />
@@ -75,8 +105,8 @@ export default function UploadScan() {
           <div className="upload-zone-icon">
             <Upload size={40} />
           </div>
-          <h3>Drop DICOM or images here</h3>
-          <p>or click to browse. Supports .dcm, .nii, .jpg, .png</p>
+          <h3>Drop DICOM files here</h3>
+          <p>or click to browse. Supports any .dcm or .dicom file</p>
         </label>
       </motion.div>
 
@@ -117,8 +147,13 @@ export default function UploadScan() {
             <button type="button" className="btn btn-secondary" onClick={handleClearAll}>
               Clear all
             </button>
-            <button type="button" className="btn btn-primary" onClick={handleStartUpload}>
-              Start upload & analyze
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleStartUpload}
+              disabled={uploading}
+            >
+              {uploading ? 'Uploading…' : 'Start upload'}
             </button>
           </div>
         </motion.div>

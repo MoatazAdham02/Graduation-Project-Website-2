@@ -13,7 +13,7 @@ export async function authMiddleware(req, res, next) {
     if (!user) return res.status(401).json({ error: 'User not found' });
     req.user = user;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }

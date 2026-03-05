@@ -1,8 +1,0 @@
-flask
-flask-cors
-torch
-torchvision
-pydicom
-numpy
-gdown
-monai

@@ -63,10 +63,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: { error?: string; token?: string; user?: User } = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('Server returned an invalid response. Make sure the backend is running on ' + API_URL);
+    }
     if (!res.ok) throw new Error(data.error || 'Login failed');
-    setToken(data.token);
-    setUser(data.user);
+    setToken(data.token!);
+    setUser(data.user!);
   }, [setToken]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
@@ -75,10 +81,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: { error?: string; token?: string; user?: User } = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('Server returned an invalid response. Make sure the backend is running on ' + API_URL);
+    }
     if (!res.ok) throw new Error(data.error || 'Registration failed');
-    setToken(data.token);
-    setUser(data.user);
+    setToken(data.token!);
+    setUser(data.user!);
   }, [setToken]);
 
   const logout = useCallback(() => {

@@ -86,3 +86,21 @@ This document summarizes what was added so the COROnet app uses real authenticat
 - **Connection:** Frontend uses `VITE_API_URL` (http://localhost:4000) for all auth requests; backend CORS allows the frontend origin (http://localhost:5173).
 
 You can change `JWT_SECRET` in Backend `.env` for production and ensure `.env` and `.env.local` are not committed (add them to `.gitignore` if needed).
+
+---
+
+## 5. FastAPI backend (alternative to Node)
+
+A **FastAPI** (Python) backend is available with the same API surface so you can run the app with Python instead of Node.
+
+### Location and dependencies
+- **Backend/** — `main.py` (FastAPI app), `config.py`, `database.py`, `auth.py`, `routers/auth.py`, `routers/scan.py`, `routers/items.py`
+- **Backend/requirements-fastapi.txt** — FastAPI, uvicorn, motor, python-jose, passlib[bcrypt], pydantic-settings, python-multipart
+
+### How to run
+1. From `Backend`: `pip install -r requirements-fastapi.txt`
+2. Use the same `.env` (MONGODB_URI, JWT_SECRET, CORS_ORIGIN).
+3. Run: `uvicorn main:app --reload` (default port 8000). For port 4000 (so the frontend works without changing `VITE_API_URL`):  
+   `PORT=4000 uvicorn main:app --reload` (macOS/Linux) or `set PORT=4000 && uvicorn main:app --reload` (Windows CMD).
+
+See **Backend/README-FastAPI.md** for full instructions. Run either Node or FastAPI, not both on the same port.
