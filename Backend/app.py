@@ -38,4 +38,27 @@ def predict():
         # 3. Normalization
         volume = (volume - volume.min()) / (volume.max() - volume.min() + 1e-8)
         
-        # 4. تظبيط الأبعاد للموديل الـ 3D (MON
+        # 4. تظبيط الأبعاد للموديل الـ 3D (MONAI DenseNet)
+        # الموديل مستني (Batch, Channel, Depth, Height, Width)
+        # الـ Depth هنا هو عدد الـ Slices
+        input_tensor = torch.tensor(volume).unsqueeze(0).unsqueeze(0)
+        
+        # 5. التوقع (Prediction)
+        with torch.no_grad():
+            output = model(input_tensor)
+            prediction = torch.argmax(output).item()
+        
+        labels = {0: "Normal", 1: "Abnormal"}
+        return jsonify({
+            "status": "success",
+            "prediction": labels.get(prediction),
+            "code": prediction,
+            "slices_processed": volume.shape[0] # عشان نتأكد إنه قرأ كل الـ Slices
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
