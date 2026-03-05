@@ -38,9 +38,17 @@ router.get('/', async (req, res) => {
   try {
     const scans = await Scan.find()
       .sort({ createdAt: -1 })
-      .select('originalName size createdAt')
+      .select('originalName size createdAt patientName studyDate modality')
       .lean();
-    res.json(scans.map((s) => ({ id: s._id, originalName: s.originalName, size: s.size, createdAt: s.createdAt })));
+    res.json(scans.map((s) => ({
+      id: s._id,
+      originalName: s.originalName,
+      size: s.size,
+      createdAt: s.createdAt,
+      patientName: s.patientName || '',
+      studyDate: s.studyDate || '',
+      modality: s.modality || ''
+    })));
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to list scans' });
   }
@@ -73,38 +81,82 @@ router.get('/:id', async (req, res) => {
       originalName: scan.originalName,
       size: scan.size,
       mimeType: scan.mimeType,
-      createdAt: scan.createdAt
+      createdAt: scan.createdAt,
+      patientName: scan.patientName || '',
+      studyDate: scan.studyDate || '',
+      modality: scan.modality || ''
     });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to get scan' });
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const scan = await Scan.findById(req.params.id);
+    if (!scan) return res.status(404).json({ error: 'Scan not found' });
+    const absolutePath = path.resolve(scan.path);
+    if (absolutePath.startsWith(path.resolve(UPLOAD_DIR)) && fs.existsSync(absolutePath)) {
+      try {
+        fs.unlinkSync(absolutePath);
+      } catch (e) {
+        // continue to delete DB record even if file delete fails
+      }
+    }
+    await Scan.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to delete scan' });
+  }
+});
+
 router.post(
   '/upload',
-  upload.array('file', 20),
+  upload.single('file'),
   async (req, res) => {
     try {
-      const files = req.files || [];
-      if (files.length === 0) {
+      const f = req.file;
+      if (!f) {
         return res.status(400).json({ error: 'No DICOM file uploaded. Use form field "file".' });
       }
-      const created = [];
-      for (const f of files) {
-        const scan = await Scan.create({
-          originalName: f.originalname,
-          path: f.path,
-          size: f.size,
-          mimeType: f.mimetype || 'application/dicom'
+      const patientName = (req.body && req.body.patientName) ? String(req.body.patientName).trim() : '';
+      const studyDate = (req.body && req.body.studyDate) ? String(req.body.studyDate).trim() : '';
+      const modality = (req.body && req.body.modality) ? String(req.body.modality).trim() : '';
+
+      const existing = await Scan.findOne({
+        originalName: f.originalname,
+        studyDate: studyDate || ''
+      }).lean();
+      if (existing && (existing.patientName || '').toLowerCase() === (patientName || '').toLowerCase()) {
+        return res.status(201).json({
+          ok: true,
+          uploaded: [],
+          skipped: true,
+          reason: 'A scan with the same patient, study date, and file name already exists.'
         });
-        created.push({
+      }
+
+      const scan = await Scan.create({
+        originalName: f.originalname,
+        path: f.path,
+        size: f.size,
+        mimeType: f.mimetype || 'application/dicom',
+        patientName,
+        studyDate,
+        modality
+      });
+      res.status(201).json({
+        ok: true,
+        uploaded: [{
           id: scan._id,
           originalName: scan.originalName,
           size: scan.size,
-          createdAt: scan.createdAt
-        });
-      }
-      res.status(201).json({ ok: true, uploaded: created });
+          createdAt: scan.createdAt,
+          patientName: scan.patientName,
+          studyDate: scan.studyDate,
+          modality: scan.modality
+        }]
+      });
     } catch (err) {
       res.status(500).json({ error: err.message || 'Upload failed' });
     }

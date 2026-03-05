@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 import time
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from bson import ObjectId
 
@@ -40,6 +40,9 @@ async def list_scans():
             "originalName": s.get("originalName", ""),
             "size": s.get("size", 0),
             "createdAt": s.get("createdAt"),
+            "patientName": s.get("patientName", ""),
+            "studyDate": s.get("studyDate", ""),
+            "modality": s.get("modality", ""),
         })
     return scans
 
@@ -59,6 +62,9 @@ async def get_scan(id: str):
         "size": scan.get("size", 0),
         "mimeType": scan.get("mimeType", "application/dicom"),
         "createdAt": scan.get("createdAt"),
+        "patientName": scan.get("patientName", ""),
+        "studyDate": scan.get("studyDate", ""),
+        "modality": scan.get("modality", ""),
     }
 
 @router.get("/{id}/file")
@@ -89,8 +95,36 @@ async def get_scan_file(id: str):
         media_type=scan.get("mimeType") or "application/dicom",
     )
 
+@router.delete("/{id}")
+async def delete_scan(id: str):
+    try:
+        oid = ObjectId(id)
+    except Exception:
+        raise HTTPException(404, "Scan not found")
+    db = get_db()
+    scan = await db.scans.find_one({"_id": oid})
+    if not scan:
+        raise HTTPException(404, "Scan not found")
+    path = Path(scan["path"])
+    if not path.is_absolute():
+        path = UPLOAD_DIR / path
+    else:
+        path = Path(scan["path"])
+    if path.exists():
+        try:
+            path.unlink()
+        except Exception:
+            pass
+    await db.scans.delete_one({"_id": oid})
+    return {"ok": True}
+
 @router.post("/upload")
-async def upload_scan(file: UploadFile = File(...)):
+async def upload_scan(
+    file: UploadFile = File(...),
+    patientName: str = Form(""),
+    studyDate: str = Form(""),
+    modality: str = Form(""),
+):
     if not file.filename and not file.content_type:
         raise HTTPException(400, 'No DICOM file uploaded. Use form field "file".')
     if not _allowed_file(file.filename or "", file.content_type):
@@ -98,17 +132,39 @@ async def upload_scan(file: UploadFile = File(...)):
     content = await file.read()
     if len(content) > MAX_SIZE:
         raise HTTPException(400, "File too large")
-    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename or "scan")
+
+    pname = (patientName or "").strip()
+    sdate = (studyDate or "").strip()
+    mod = (modality or "").strip()
+    orig = file.filename or "scan"
+
+    db = get_db()
+    existing = await db.scans.find_one({"originalName": orig, "studyDate": sdate})
+    if existing and (existing.get("patientName") or "").lower() == (pname or "").lower():
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=201,
+            content={
+                "ok": True,
+                "uploaded": [],
+                "skipped": True,
+                "reason": "A scan with the same patient, study date, and file name already exists.",
+            },
+        )
+
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", orig)
     safe_name = f"{int(time.time() * 1000)}-{safe_name}"
     dest = UPLOAD_DIR / safe_name
     dest.write_bytes(content)
-    db = get_db()
     doc = {
-        "originalName": file.filename or "scan",
+        "originalName": orig,
         "path": str(dest.resolve()),
         "size": len(content),
         "mimeType": file.content_type or "application/dicom",
         "createdAt": datetime.utcnow(),
+        "patientName": pname,
+        "studyDate": sdate,
+        "modality": mod,
     }
     r = await db.scans.insert_one(doc)
     return {
@@ -119,6 +175,9 @@ async def upload_scan(file: UploadFile = File(...)):
                 "originalName": doc["originalName"],
                 "size": doc["size"],
                 "createdAt": doc["createdAt"],
+                "patientName": doc["patientName"],
+                "studyDate": doc["studyDate"],
+                "modality": doc["modality"],
             }
         ],
     }

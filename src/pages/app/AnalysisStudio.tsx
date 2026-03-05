@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, Loader2, Layers, Sliders, FileImage } from 'lucide-react';
 import dicomParser from 'dicom-parser';
@@ -150,6 +151,7 @@ function renderDicomToCanvas(
 }
 
 export default function AnalysisStudio() {
+  const location = useLocation();
   const [scans, setScans] = useState<ScanItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -177,6 +179,13 @@ export default function AnalysisStudio() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const scanId = (location.state as { scanId?: string } | null)?.scanId;
+    if (scanId && scans.some((s) => s.id === scanId)) {
+      setSelectedId(scanId);
+    }
+  }, [location.state, scans]);
 
   useEffect(() => {
     if (!selectedId) {

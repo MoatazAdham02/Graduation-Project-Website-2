@@ -1,11 +1,45 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileImage, X } from 'lucide-react';
+import { Upload, FileImage, X, Loader2 } from 'lucide-react';
+import dicomParser from 'dicom-parser';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './UploadScan.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+function getDicomTag(
+  dataSet: dicomParser.DataSet,
+  tag: string
+): string {
+  try {
+    const elements = (dataSet as unknown as { elements: Record<string, { dataOffset: number; length: number }> }).elements;
+    const raw = elements[tag];
+    if (!raw) return '';
+    const arr = new Uint8Array(
+      dataSet.byteArray.buffer,
+      dataSet.byteArray.byteOffset + raw.dataOffset,
+      raw.length
+    );
+    return new TextDecoder().decode(arr).trim();
+  } catch {
+    return '';
+  }
+}
+
+function extractDicomMetadata(arrayBuffer: ArrayBuffer): { patientName: string; studyDate: string; modality: string } {
+  try {
+    const byteArray = new Uint8Array(arrayBuffer);
+    const dataSet = dicomParser.parseDicom(byteArray);
+    return {
+      patientName: getDicomTag(dataSet, 'x00100010') || '',
+      studyDate: getDicomTag(dataSet, 'x00080020') || '',
+      modality: getDicomTag(dataSet, 'x00080060') || '',
+    };
+  } catch {
+    return { patientName: '', studyDate: '', modality: '' };
+  }
+}
 
 export default function UploadScan() {
   const [dragActive, setDragActive] = useState(false);
@@ -60,20 +94,50 @@ export default function UploadScan() {
   const handleStartUpload = async () => {
     if (files.length === 0) return;
     setUploading(true);
+    let successCount = 0;
+    let skippedCount = 0;
     try {
-      const form = new FormData();
-      files.forEach((f) => form.append('file', f));
-      const res = await fetch(`${API_URL}/api/scan/upload`, {
-        method: 'POST',
-        body: form
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        addToast('error', data.error || `Upload failed (${res.status})`);
-        return;
+      for (const file of files) {
+        let patientName = '';
+        let studyDate = '';
+        let modality = '';
+        try {
+          const buf = await file.arrayBuffer();
+          const meta = extractDicomMetadata(buf);
+          patientName = meta.patientName;
+          studyDate = meta.studyDate;
+          modality = meta.modality;
+        } catch {
+          // use empty metadata if parse fails
+        }
+        const form = new FormData();
+        form.append('file', file);
+        form.append('patientName', patientName);
+        form.append('studyDate', studyDate);
+        form.append('modality', modality);
+        const res = await fetch(`${API_URL}/api/scan/upload`, {
+          method: 'POST',
+          body: form,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          addToast('error', data.error || `Upload failed for ${file.name}`);
+          continue;
+        }
+        if (data.skipped) {
+          skippedCount += 1;
+          addToast('info', data.reason || 'Duplicate scan skipped.');
+          continue;
+        }
+        successCount += data.uploaded?.length ?? 1;
       }
-      addToast('success', `${data.uploaded?.length ?? files.length} DICOM file(s) uploaded successfully.`);
-      setFiles([]);
+      if (successCount > 0) {
+        addToast('success', `${successCount} DICOM file(s) uploaded. Patient info is available on the Patients page.`);
+        setFiles([]);
+      }
+      if (skippedCount > 0 && successCount === 0) {
+        addToast('info', `${skippedCount} file(s) skipped (already exist).`);
+      }
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -153,7 +217,14 @@ export default function UploadScan() {
               onClick={handleStartUpload}
               disabled={uploading}
             >
-              {uploading ? 'Uploading…' : 'Start upload'}
+              {uploading ? (
+                <>
+                  <Loader2 size={18} className="spin" />
+                  Uploading…
+                </>
+              ) : (
+                'Start upload'
+              )}
             </button>
           </div>
         </motion.div>
