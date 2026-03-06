@@ -8,7 +8,6 @@ const routeTitles: Record<string, { title: string; subtitle?: string }> = {
   '/app/reports': { title: 'Reports', subtitle: 'View and export reports' },
   '/app/compare': { title: 'Compare', subtitle: 'Compare cardiac studies' },
   '/app/share': { title: 'Share Case', subtitle: 'Collaborate with colleagues' },
-  '/app/annotation': { title: 'Annotation', subtitle: 'Annotate and markup' },
   '/app/analytics': { title: 'Analytics', subtitle: 'Insights and trends' },
   '/app/admin': { title: 'Admin', subtitle: 'System administration' },
   '/app/settings': { title: 'Settings', subtitle: 'Preferences and account' },

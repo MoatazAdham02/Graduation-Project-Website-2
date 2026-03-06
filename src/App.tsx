@@ -24,7 +24,6 @@ import Reports from './pages/app/Reports';
 import ReportDetail from './pages/app/ReportDetail';
 import Compare from './pages/app/Compare';
 import ShareCase from './pages/app/ShareCase';
-import Annotation from './pages/app/Annotation';
 import Analytics from './pages/app/Analytics';
 import Admin from './pages/app/Admin';
 import Settings from './pages/app/Settings';
@@ -65,7 +64,6 @@ function App() {
           <Route path="reports/:id" element={<ReportDetail />} />
           <Route path="compare" element={<Compare />} />
           <Route path="share" element={<ShareCase />} />
-          <Route path="annotation" element={<Annotation />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="admin" element={<Admin />} />
           <Route path="settings" element={<Settings />} />

@@ -10,7 +10,6 @@ const pathLabels: Record<string, string> = {
   'reports': 'Reports',
   'compare': 'Compare',
   'share': 'Share Case',
-  'annotation': 'Annotation',
   'analytics': 'Analytics',
   'admin': 'Admin',
   'settings': 'Settings',

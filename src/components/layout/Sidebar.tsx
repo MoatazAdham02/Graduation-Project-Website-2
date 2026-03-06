@@ -8,7 +8,6 @@ import {
   FileText,
   GitCompare,
   Share2,
-  PenTool,
   BarChart3,
   Shield,
   Settings,
@@ -30,7 +29,6 @@ const navItems = [
   { to: '/app/reports', icon: FileText, label: 'Reports' },
   { to: '/app/compare', icon: GitCompare, label: 'Compare' },
   { to: '/app/share', icon: Share2, label: 'Share Case' },
-  { to: '/app/annotation', icon: PenTool, label: 'Annotation' },
   { to: '/app/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/app/admin', icon: Shield, label: 'Admin' },
 ];

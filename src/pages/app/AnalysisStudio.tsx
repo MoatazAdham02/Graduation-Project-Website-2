@@ -1,14 +1,38 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Play, Loader2, Layers, Sliders, FileImage } from 'lucide-react';
+import { Play, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import './AnalysisStudio.css';
+import './Annotation.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 type ScanItem = { id: string; originalName: string; size: number; createdAt: string };
+
+type AnnotationShape = {
+  id: string;
+  type: 'rect' | 'circle' | 'text' | 'path';
+  color: string;
+  opacity: number;
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  text?: string;
+  points?: { x: number; y: number }[];
+};
+
+const annotationTools = [
+  { id: 'pen', icon: PenTool, label: 'Freehand' },
+  { id: 'rect', icon: Square, label: 'Rectangle' },
+  { id: 'circle', icon: Circle, label: 'Circle' },
+  { id: 'text', icon: Type, label: 'Text' },
+  { id: 'eraser', icon: Eraser, label: 'Eraser' },
+];
+
+const annotationColors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0d9488', '#0284c7', '#7c3aed'];
 
 function getTag(dataSet: dicomParser.DataSet, tag: string, type: 'string' | 'int' = 'string'): string | number | undefined {
   try {
@@ -179,6 +203,16 @@ export default function AnalysisStudio() {
   const [running, setRunning] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+
+  const [activeTool, setActiveTool] = useState<'rect' | 'circle' | 'text' | 'eraser' | 'pen'>('pen');
+  const [annotationColor, setAnnotationColor] = useState(annotationColors[0]);
+  const [annotationOpacity, setAnnotationOpacity] = useState(80);
+  const [annotations, setAnnotations] = useState<AnnotationShape[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
+  const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number } | null>(null);
+  const [drawingPath, setDrawingPath] = useState<{ x: number; y: number }[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,6 +244,7 @@ export default function AnalysisStudio() {
       setMetadata({});
       setParsedData(null);
       setCurrentFrame(0);
+      setAnnotations([]);
       return;
     }
     let cancelled = false;
@@ -251,6 +286,216 @@ export default function AnalysisStudio() {
     const dataSet = dicomParser.parseDicom(new Uint8Array(parsedData.arrayBuffer));
     renderDicomToCanvas(dataSet, canvasRef.current, currentFrame);
   }, [parsedData, currentFrame]);
+
+  const drawAnnotationsOnOverlay = useCallback(() => {
+    const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
+    if (!canvas || !overlay || !overlay.getContext('2d')) return;
+    overlay.width = canvas.width;
+    overlay.height = canvas.height;
+    const ctx = overlay.getContext('2d')!;
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    annotations.forEach((a) => {
+      ctx.strokeStyle = a.color;
+      ctx.globalAlpha = a.opacity / 100;
+      ctx.lineWidth = 2;
+      if (a.type === 'rect' && a.w != null && a.h != null) {
+        ctx.strokeRect(a.x, a.y, a.w, a.h);
+      } else if (a.type === 'circle' && a.w != null && a.h != null) {
+        const rx = Math.abs(a.w) / 2;
+        const ry = Math.abs(a.h) / 2;
+        ctx.beginPath();
+        ctx.ellipse(a.x + a.w / 2, a.y + a.h / 2, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (a.type === 'text' && a.text) {
+        ctx.font = '16px system-ui';
+        ctx.fillStyle = a.color;
+        ctx.fillText(a.text, a.x, a.y);
+      } else if (a.type === 'path' && a.points && a.points.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(a.points[0].x, a.points[0].y);
+        for (let i = 1; i < a.points.length; i++) ctx.lineTo(a.points[i].x, a.points[i].y);
+        ctx.stroke();
+      }
+    });
+    ctx.globalAlpha = 1;
+    if (drawingPath && drawingPath.length >= 2) {
+      ctx.strokeStyle = annotationColor;
+      ctx.globalAlpha = annotationOpacity / 100;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(drawingPath[0].x, drawingPath[0].y);
+      for (let i = 1; i < drawingPath.length; i++) ctx.lineTo(drawingPath[i].x, drawingPath[i].y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    if (isDrawing && drawStart && drawCurrent && (activeTool === 'rect' || activeTool === 'circle')) {
+      const x = Math.min(drawStart.x, drawCurrent.x);
+      const y = Math.min(drawStart.y, drawCurrent.y);
+      const w = Math.abs(drawCurrent.x - drawStart.x);
+      const h = Math.abs(drawCurrent.y - drawStart.y);
+      ctx.strokeStyle = annotationColor;
+      ctx.globalAlpha = annotationOpacity / 100;
+      ctx.lineWidth = 2;
+      if (activeTool === 'rect') ctx.strokeRect(x, y, w, h);
+      else {
+        ctx.beginPath();
+        ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }, [annotations, isDrawing, drawStart, drawCurrent, drawingPath, activeTool, annotationColor, annotationOpacity]);
+
+  useEffect(() => {
+    drawAnnotationsOnOverlay();
+  }, [drawAnnotationsOnOverlay]);
+
+  const getOverlayCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const overlay = overlayRef.current;
+    if (!overlay) return { x: 0, y: 0 };
+    const rect = overlay.getBoundingClientRect();
+    const scaleX = overlay.width / rect.width;
+    const scaleY = overlay.height / rect.height;
+    return {
+      x: Math.round((e.clientX - rect.left) * scaleX),
+      y: Math.round((e.clientY - rect.top) * scaleY),
+    };
+  };
+
+  const handleOverlayMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { x, y } = getOverlayCoords(e);
+    if (activeTool === 'eraser') {
+      const contains = (a: AnnotationShape, px: number, py: number) => {
+        if (a.type === 'text') return Math.abs(a.x - px) < 30 && Math.abs(a.y - py) < 15;
+        if (a.type === 'path' && a.points && a.points.length >= 2) {
+          const threshold = 10;
+          for (let i = 0; i < a.points.length - 1; i++) {
+            const p1 = a.points[i];
+            const p2 = a.points[i + 1];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const t = Math.max(0, Math.min(1, ((px - p1.x) * dx + (py - p1.y) * dy) / (len * len)));
+            const projX = p1.x + t * dx;
+            const projY = p1.y + t * dy;
+            if (Math.hypot(px - projX, py - projY) <= threshold) return true;
+          }
+          return false;
+        }
+        if (a.w == null || a.h == null) return false;
+        if (a.type === 'rect') return px >= a.x && px <= a.x + a.w && py >= a.y && py <= a.y + a.h;
+        const cx = a.x + a.w / 2;
+        const cy = a.y + a.h / 2;
+        const rx = Math.max(a.w / 2, 1);
+        const ry = Math.max(a.h / 2, 1);
+        return ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1;
+      };
+      for (let i = annotations.length - 1; i >= 0; i--) {
+        if (contains(annotations[i], x, y)) {
+          setAnnotations((prev) => prev.filter((_, j) => j !== i));
+          break;
+        }
+      }
+      return;
+    }
+    if (activeTool === 'pen') {
+      setIsDrawing(true);
+      setDrawingPath([{ x, y }]);
+      return;
+    }
+    if (activeTool === 'rect' || activeTool === 'circle') {
+      setIsDrawing(true);
+      setDrawStart({ x, y });
+      setDrawCurrent({ x, y });
+    } else if (activeTool === 'text') {
+      const t = window.prompt('Text:');
+      if (t) {
+        setAnnotations((prev) => [
+          ...prev,
+          { id: String(Date.now()), type: 'text', color: annotationColor, opacity: annotationOpacity, x, y, text: t },
+        ]);
+      }
+    }
+  };
+
+  const handleOverlayMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getOverlayCoords(e);
+    if (activeTool === 'pen' && drawingPath && drawingPath.length > 0) {
+      setDrawingPath((prev) => (prev ? [...prev, coords] : [coords]));
+      return;
+    }
+    if (!isDrawing || !drawStart) return;
+    setDrawCurrent(coords);
+  };
+
+  const handleOverlayMouseUp = () => {
+    if (activeTool === 'pen' && drawingPath && drawingPath.length >= 2) {
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          id: String(Date.now()),
+          type: 'path',
+          color: annotationColor,
+          opacity: annotationOpacity,
+          x: drawingPath[0].x,
+          y: drawingPath[0].y,
+          points: [...drawingPath],
+        },
+      ]);
+      setDrawingPath(null);
+      setIsDrawing(false);
+      return;
+    }
+    if (!isDrawing || !drawStart || !drawCurrent) return;
+    const { x: x0, y: y0 } = drawStart;
+    const { x: x1, y: y1 } = drawCurrent;
+    const x = Math.min(x0, x1);
+    const y = Math.min(y0, y1);
+    const w = Math.abs(x1 - x0);
+    const h = Math.abs(y1 - y0);
+    if (w > 2 && h > 2) {
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          id: String(Date.now()),
+          type: activeTool === 'circle' ? 'circle' : 'rect',
+          color: annotationColor,
+          opacity: annotationOpacity,
+          x,
+          y,
+          w,
+          h,
+        },
+      ]);
+    }
+    setIsDrawing(false);
+    setDrawStart(null);
+    setDrawCurrent(null);
+  };
+
+  const handleOverlayMouseLeave = () => {
+    if (activeTool === 'pen' && drawingPath && drawingPath.length >= 2) {
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          id: String(Date.now()),
+          type: 'path',
+          color: annotationColor,
+          opacity: annotationOpacity,
+          x: drawingPath[0].x,
+          y: drawingPath[0].y,
+          points: [...drawingPath],
+        },
+      ]);
+      setDrawingPath(null);
+    } else if (drawingPath) setDrawingPath(null);
+    setIsDrawing(false);
+    setDrawStart(null);
+    setDrawCurrent(null);
+  };
 
   return (
     <div className="analysis-page">
@@ -329,17 +574,49 @@ export default function AnalysisStudio() {
                       <div className="analysis-zoom-wrapper">
                         <TransformWrapper
                           initialScale={1}
-                          minScale={0.5}
-                          maxScale={8}
+                          minScale={0.25}
+                          maxScale={20}
                           limitToBounds={true}
                           centerOnInit={false}
+                          panning={{ disabled: true }}
+                          doubleClick={{ mode: 'reset' }}
+                          wheel={{ step: 0.15 }}
+                          pinch={{ step: 5 }}
                         >
-                          <TransformComponent
-                            wrapperStyle={{ width: '100%', height: '100%' }}
-                            contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}
-                          >
-                            <canvas ref={canvasRef} className="analysis-dicom-canvas" />
-                          </TransformComponent>
+                          {({ zoomIn, zoomOut, resetTransform }) => (
+                            <>
+                              {parsedData && (
+                                <div className="analysis-zoom-controls">
+                                  <button type="button" className="analysis-zoom-btn" onClick={() => zoomIn()} title="Zoom in" aria-label="Zoom in">
+                                    <ZoomIn size={20} />
+                                  </button>
+                                  <button type="button" className="analysis-zoom-btn" onClick={() => zoomOut()} title="Zoom out" aria-label="Zoom out">
+                                    <ZoomOut size={20} />
+                                  </button>
+                                  <button type="button" className="analysis-zoom-btn" onClick={() => resetTransform()} title="Reset view" aria-label="Reset view">
+                                    <RotateCcw size={20} />
+                                  </button>
+                                </div>
+                              )}
+                              <TransformComponent
+                                wrapperStyle={{ width: '100%', height: '100%' }}
+                                contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}
+                              >
+                                <div className="analysis-canvas-container">
+                                  <canvas ref={canvasRef} className="analysis-dicom-canvas" />
+                                  <canvas
+                                    ref={overlayRef}
+                                    className="analysis-annotation-overlay"
+                                    onMouseDown={handleOverlayMouseDown}
+                                    onMouseMove={handleOverlayMouseMove}
+                                    onMouseUp={handleOverlayMouseUp}
+                                    onMouseLeave={handleOverlayMouseLeave}
+                                    style={{ cursor: activeTool === 'eraser' ? 'cell' : 'crosshair' }}
+                                  />
+                                </div>
+                              </TransformComponent>
+                            </>
+                          )}
                         </TransformWrapper>
                       </div>
                     </div>
@@ -401,6 +678,87 @@ export default function AnalysisStudio() {
               </>
             )}
           </button>
+
+          {parsedData && (
+            <div className="analysis-annotation-section">
+              <div className="annotation-toolbar-header">
+                <PenTool size={20} />
+                <span>Annotation</span>
+              </div>
+              <div className="annotation-tools">
+                {annotationTools.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`annotation-tool ${activeTool === t.id ? 'annotation-tool-active' : ''}`}
+                    onClick={() => setActiveTool(t.id as typeof activeTool)}
+                    title={t.label}
+                  >
+                    <t.icon size={20} />
+                  </button>
+                ))}
+              </div>
+              <div className="annotation-colors">
+                <span className="annotation-label">Color</span>
+                <div className="annotation-color-grid">
+                  {annotationColors.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`annotation-color-swatch ${annotationColor === c ? 'annotation-color-active' : ''}`}
+                      style={{ background: c }}
+                      onClick={() => setAnnotationColor(c)}
+                      aria-label={`Color ${c}`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="annotation-opacity">
+                <label className="label">Opacity</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={annotationOpacity}
+                  onChange={(e) => setAnnotationOpacity(Number(e.target.value))}
+                  className="annotation-slider"
+                />
+              </div>
+              <div className="analysis-annotations-list">
+                <div className="analysis-annotations-list-header">
+                  <h4>Annotations</h4>
+                  <button
+                    type="button"
+                    className="btn analysis-clear-annotations"
+                    onClick={() => {
+                      setAnnotations([]);
+                      setDrawingPath(null);
+                      setIsDrawing(false);
+                      setDrawStart(null);
+                      setDrawCurrent(null);
+                    }}
+                    disabled={annotations.length === 0}
+                    title="Clear all annotations"
+                  >
+                    <Trash2 size={16} />
+                    Clear all
+                  </button>
+                </div>
+                {annotations.length === 0 ? (
+                  <p className="annotation-list-empty">No annotations yet. Draw on the scan.</p>
+                ) : (
+                  <ul className="annotation-list-ul">
+                    {annotations.map((a, i) => (
+                      <li key={a.id} className="annotation-list-item">
+                        {a.type === 'text' ? `Text: ${a.text}` : a.type === 'path' ? `Freehand ${i + 1}` : `${a.type === 'circle' ? 'Circle' : 'Rectangle'} ${i + 1}`}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="analysis-results-preview">
             <h4>Results</h4>
             <p className="analysis-results-placeholder">No results yet.</p>
