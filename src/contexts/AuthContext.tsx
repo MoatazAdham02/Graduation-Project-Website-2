@@ -58,17 +58,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadUser]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(`${API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+    } catch (err) {
+      const msg = err instanceof Error && err.message === 'Failed to fetch'
+        ? `Cannot reach the server. Start the backend (e.g. run "npm run dev" in the Backend folder) and ensure it is running at ${API_URL}`
+        : (err instanceof Error ? err.message : 'Network error');
+      throw new Error(msg);
+    }
     const text = await res.text();
     let data: { error?: string; token?: string; user?: User } = {};
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error('Server returned an invalid response. Make sure the backend is running on ' + API_URL);
+      throw new Error('Server returned an invalid response. Make sure the backend is running at ' + API_URL);
     }
     if (!res.ok) throw new Error(data.error || 'Login failed');
     setToken(data.token!);
@@ -76,17 +84,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [setToken]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const res = await fetch(`${API_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+    } catch (err) {
+      const msg = err instanceof Error && err.message === 'Failed to fetch'
+        ? `Cannot reach the server. Start the backend (e.g. run "npm run dev" in the Backend folder) and ensure it is running at ${API_URL}`
+        : (err instanceof Error ? err.message : 'Network error');
+      throw new Error(msg);
+    }
     const text = await res.text();
     let data: { error?: string; token?: string; user?: User } = {};
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error('Server returned an invalid response. Make sure the backend is running on ' + API_URL);
+      throw new Error('Server returned an invalid response. Make sure the backend is running at ' + API_URL);
     }
     if (!res.ok) throw new Error(data.error || 'Registration failed');
     setToken(data.token!);

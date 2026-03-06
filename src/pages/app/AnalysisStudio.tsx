@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Play, Loader2, Layers, Sliders, FileImage } from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import './AnalysisStudio.css';
@@ -27,8 +28,9 @@ function getTag(dataSet: dicomParser.DataSet, tag: string, type: 'string' | 'int
 
 function renderDicomToCanvas(
   dataSet: dicomParser.DataSet,
-  canvas: HTMLCanvasElement | null
-): { metadata: Record<string, string> } {
+  canvas: HTMLCanvasElement | null,
+  frameIndex: number = 0
+): { metadata: Record<string, string>; numberOfFrames: number } {
   const metadata: Record<string, string> = {};
   const rows = dataSet.int16('x00280010') ?? 0;
   const cols = dataSet.int16('x00280011') ?? 0;
@@ -36,12 +38,21 @@ function renderDicomToCanvas(
   const pixelRepresentation = dataSet.int16('x00280103') ?? 0;
   const samplesPerPixel = dataSet.int16('x00280002') ?? 1;
 
+  let numberOfFrames = 1;
+  try {
+    const nf = getTag(dataSet, 'x00280008', 'int');
+    if (typeof nf === 'number' && nf > 1) numberOfFrames = nf;
+  } catch {
+    /* ignore */
+  }
+
   metadata['Patient Name'] = (getTag(dataSet, 'x00100010') as string) ?? '—';
   metadata['Study Date'] = (getTag(dataSet, 'x00080020') as string) ?? '—';
   metadata['Modality'] = (getTag(dataSet, 'x00080060') as string) ?? '—';
   metadata['Rows'] = String(rows);
   metadata['Columns'] = String(cols);
   metadata['Bits Allocated'] = String(bitsAllocated);
+  if (numberOfFrames > 1) metadata['Frames'] = String(numberOfFrames);
 
   const elements = (dataSet as unknown as { elements: Record<string, { dataOffset: number; length: number }> }).elements;
   let pixelDataElement = elements?.x7fe00010 ?? elements?.x7FE00010;
@@ -62,22 +73,28 @@ function renderDicomToCanvas(
         ctx.fillText('No pixel data or unsupported format', 20, 40);
       }
     }
-    return { metadata };
+    return { metadata, numberOfFrames };
   }
 
   const bytesPerPixel = bitsAllocated / 8;
-  const numPixels = rows * cols * samplesPerPixel;
+  const numPixelsPerFrame = rows * cols * samplesPerPixel;
+  const numPixels = numPixelsPerFrame * numberOfFrames;
   const pixelDataLength = numPixels * bytesPerPixel;
+  const frameOffsetBytes = frameIndex * numPixelsPerFrame * bytesPerPixel;
+  const frameEndBytes = frameOffsetBytes + numPixelsPerFrame * bytesPerPixel;
+  const frameByteLength = numPixelsPerFrame * bytesPerPixel;
+
   let min = Infinity;
   let max = -Infinity;
 
   if (bitsAllocated === 16) {
     const view = new DataView(
       dataSet.byteArray.buffer,
-      dataSet.byteArray.byteOffset + pixelDataElement.dataOffset,
-      Math.min(pixelDataElement.length, pixelDataLength)
+      dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + frameOffsetBytes,
+      Math.min(frameByteLength, pixelDataElement.length - frameOffsetBytes)
     );
-    for (let i = 0; i < numPixels; i++) {
+    const n = Math.floor(view.byteLength / 2);
+    for (let i = 0; i < n; i++) {
       const v = pixelRepresentation === 1 ? view.getInt16(i * 2, true) : view.getUint16(i * 2, true);
       if (v < min) min = v;
       if (v > max) max = v;
@@ -85,10 +102,10 @@ function renderDicomToCanvas(
   } else {
     const view = new Uint8Array(
       dataSet.byteArray.buffer,
-      dataSet.byteArray.byteOffset + pixelDataElement.dataOffset,
-      Math.min(pixelDataElement.length, pixelDataLength)
+      dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + frameOffsetBytes,
+      Math.min(frameByteLength, pixelDataElement.length - frameOffsetBytes)
     );
-    for (let i = 0; i < numPixels; i++) {
+    for (let i = 0; i < view.length; i++) {
       const v = view[i];
       if (v < min) min = v;
       if (v > max) max = v;
@@ -110,11 +127,11 @@ function renderDicomToCanvas(
     canvasWidth = maxDim;
     canvasHeight = Math.round((maxDim * rows) / cols);
   }
-  if (!canvas) return { metadata };
+  if (!canvas) return { metadata, numberOfFrames };
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return { metadata };
+  if (!ctx) return { metadata, numberOfFrames };
 
   const imageData = ctx.createImageData(canvasWidth, canvasHeight);
   const scaleX = cols / canvasWidth;
@@ -122,12 +139,12 @@ function renderDicomToCanvas(
 
   const getPixel = (r: number, c: number): number => {
     const offset = (r * cols + c) * bytesPerPixel;
-    const byteOffset = dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + offset;
+    const byteOffset = dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + frameOffsetBytes + offset;
     if (bitsAllocated === 16) {
       const view = new DataView(dataSet.byteArray.buffer, byteOffset, 2);
       return pixelRepresentation === 1 ? view.getInt16(0, true) : view.getUint16(0, true);
     }
-    return dataSet.byteArray[dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + offset];
+    return dataSet.byteArray[dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + frameOffsetBytes + offset];
   };
 
   for (let y = 0; y < canvasHeight; y++) {
@@ -147,7 +164,7 @@ function renderDicomToCanvas(
     }
   }
   ctx.putImageData(imageData, 0, 0);
-  return { metadata };
+  return { metadata, numberOfFrames };
 }
 
 export default function AnalysisStudio() {
@@ -158,8 +175,9 @@ export default function AnalysisStudio() {
   const [loadingScans, setLoadingScans] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<Record<string, string>>({});
-  const [parsedData, setParsedData] = useState<{ arrayBuffer: ArrayBuffer; metadata: Record<string, string> } | null>(null);
+  const [parsedData, setParsedData] = useState<{ arrayBuffer: ArrayBuffer; metadata: Record<string, string>; numberOfFrames: number } | null>(null);
   const [running, setRunning] = useState(false);
+  const [currentFrame, setCurrentFrame] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -191,6 +209,7 @@ export default function AnalysisStudio() {
     if (!selectedId) {
       setMetadata({});
       setParsedData(null);
+      setCurrentFrame(0);
       return;
     }
     let cancelled = false;
@@ -208,10 +227,11 @@ export default function AnalysisStudio() {
         if (cancelled) return;
         const byteArray = new Uint8Array(buf);
         const dataSet = dicomParser.parseDicom(byteArray);
-        const { metadata: meta } = renderDicomToCanvas(dataSet, null);
+        const { metadata: meta, numberOfFrames: nFrames } = renderDicomToCanvas(dataSet, null, 0);
         if (!cancelled) {
-          setParsedData({ arrayBuffer: buf, metadata: meta });
+          setParsedData({ arrayBuffer: buf, metadata: meta, numberOfFrames: nFrames });
           setMetadata(meta);
+          setCurrentFrame(0);
         }
       } catch (e) {
         if (!cancelled) {
@@ -229,8 +249,8 @@ export default function AnalysisStudio() {
   useEffect(() => {
     if (!parsedData?.arrayBuffer || !canvasRef.current) return;
     const dataSet = dicomParser.parseDicom(new Uint8Array(parsedData.arrayBuffer));
-    renderDicomToCanvas(dataSet, canvasRef.current);
-  }, [parsedData]);
+    renderDicomToCanvas(dataSet, canvasRef.current, currentFrame);
+  }, [parsedData, currentFrame]);
 
   return (
     <div className="analysis-page">
@@ -288,7 +308,40 @@ export default function AnalysisStudio() {
                 ) : (
                   <div className="analysis-viewer-content">
                     <div className="analysis-dicom-wrap">
-                      <canvas ref={canvasRef} className="analysis-dicom-canvas" />
+                      {parsedData && parsedData.numberOfFrames > 1 && (
+                        <div className="analysis-frame-controls">
+                          <label className="label">Frame</label>
+                          <div className="analysis-frame-slider-wrap">
+                            <input
+                              type="range"
+                              min={0}
+                              max={Math.max(0, parsedData.numberOfFrames - 1)}
+                              value={currentFrame}
+                              onChange={(e) => setCurrentFrame(Number(e.target.value))}
+                              className="analysis-slider"
+                            />
+                            <span className="analysis-frame-label">
+                              {currentFrame + 1} / {parsedData.numberOfFrames}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="analysis-zoom-wrapper">
+                        <TransformWrapper
+                          initialScale={1}
+                          minScale={0.5}
+                          maxScale={8}
+                          limitToBounds={true}
+                          centerOnInit={false}
+                        >
+                          <TransformComponent
+                            wrapperStyle={{ width: '100%', height: '100%' }}
+                            contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}
+                          >
+                            <canvas ref={canvasRef} className="analysis-dicom-canvas" />
+                          </TransformComponent>
+                        </TransformWrapper>
+                      </div>
                     </div>
                     <div className="analysis-metadata">
                       <h4>Patient Info.</h4>
