@@ -141,7 +141,8 @@ function renderDicomToCanvas(
   let center = windowCenter ?? (min + max) / 2;
   let width = windowWidth ?? Math.max(max - min, 1);
 
-  const maxDim = 600;
+  // Keep the initial render slightly smaller so the whole image fits in the viewer.
+  const maxDim = 520;
   let canvasWidth: number;
   let canvasHeight: number;
   if (rows >= cols) {
@@ -577,7 +578,7 @@ export default function AnalysisStudio() {
                           minScale={0.25}
                           maxScale={20}
                           limitToBounds={true}
-                          centerOnInit={false}
+                          centerOnInit={true}
                           panning={{ disabled: true }}
                           doubleClick={{ mode: 'reset' }}
                           wheel={{ step: 0.15 }}
@@ -600,7 +601,7 @@ export default function AnalysisStudio() {
                               )}
                               <TransformComponent
                                 wrapperStyle={{ width: '100%', height: '100%' }}
-                                contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}
+                                contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                               >
                                 <div className="analysis-canvas-container">
                                   <canvas ref={canvasRef} className="analysis-dicom-canvas" />
