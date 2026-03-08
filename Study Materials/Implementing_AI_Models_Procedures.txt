@@ -1,0 +1,212 @@
+================================================================================
+  PROCEDURES TO IMPLEMENT AI MODELS IN THE GRADUATION PROJECT WEBSITE
+================================================================================
+
+This document describes the exact steps for integrating AI models (built by your
+teammates) with the Analysis Studio "Run analysis" button and the backend.
+
+
+--------------------------------------------------------------------------------
+1. OVERVIEW
+--------------------------------------------------------------------------------
+
+  - Frontend: Analysis Studio page (src/pages/app/AnalysisStudio.tsx) has a
+    "Run analysis" button that currently only sets a loading state. It must
+    call a new backend API and display the returned results.
+
+  - Backend: Node/Express server (Backend/server.js) with scan routes in
+    Backend/routes/scan.routes.js. You need to add a new analysis endpoint
+    that accepts a scan ID (and optional parameters), runs or calls the AI
+    model, and returns structured results.
+
+  - AI model: Can be a separate Python service, a script called from Node, or
+    an external API. The backend will send the DICOM file (or path) to the
+    model and receive predictions.
+
+
+--------------------------------------------------------------------------------
+2. BACKEND: ADD AN ANALYSIS ENDPOINT
+--------------------------------------------------------------------------------
+
+  Step 2.1  Create a new route file (optional but recommended)
+            - Create: Backend/routes/analysis.routes.js
+            - In server.js add: app.use('/api/analysis', analysisRoutes);
+
+  Step 2.2  Define the analysis endpoint
+            - Route: POST /api/analysis/run
+            - Request body (JSON):
+              {
+                "scanId": "<MongoDB scan _id>",
+                "model": "ct-lung" | "mri-brain" | "xray-fracture",   // optional, from dropdown
+                "sensitivity": 75                                    // optional, 0-100
+              }
+            - The backend must:
+              (a) Validate scanId and load the scan from the database (Scan model).
+              (b) Get the DICOM file path from the scan (scan.path).
+              (c) Call the AI model (see section 4) with the file path and options.
+              (d) Return a JSON response with results (see section 3).
+
+  Step 2.3  Get the DICOM file for the model
+            - Use Scan.findById(scanId). If not found, return 404.
+            - scan.path is the absolute or relative path to the .dcm file.
+            - Ensure the path is safe (inside Backend/uploads/dicom). Resolve with
+              path.resolve(scan.path) and check it lies under UPLOAD_DIR.
+            - Pass this path (or read the file and pass a buffer) to the model
+              interface.
+
+
+--------------------------------------------------------------------------------
+3. API RESPONSE FORMAT (CONTRACT BETWEEN BACKEND AND FRONTEND)
+--------------------------------------------------------------------------------
+
+  Success response (HTTP 200):
+  {
+    "ok": true,
+    "scanId": "<id>",
+    "model": "ct-lung",
+    "results": {
+      "summary": "No significant nodules detected.",
+      "findings": [
+        { "label": "Nodule", "confidence": 0.92, "region": "RUL", "description": "..." }
+      ],
+      "scores": { "risk": 0.15 },
+      "imageOutputUrl": null
+    },
+    "completedAt": "2025-03-02T12:00:00.000Z"
+  }
+
+  Error response (HTTP 4xx/5xx):
+  {
+    "error": "Scan not found"
+  }
+  or
+  {
+    "error": "Model inference failed",
+    "details": "..."
+  }
+
+  - The frontend will display results.summary and results.findings in the
+    "Results" section. You can extend the structure (e.g. segmentation mask
+    URL, more scores) as long as the frontend is updated to show them.
+
+
+--------------------------------------------------------------------------------
+4. INTEGRATING THE AI MODEL (BACKEND SIDE)
+--------------------------------------------------------------------------------
+
+  Option A: Model as a separate Python service (recommended for heavy models)
+  - Run the model in a separate process (e.g. Flask/FastAPI server).
+  - Backend calls the service via HTTP:
+    POST http://localhost:5000/predict
+    Body: multipart/form-data with file=dicom_file.dcm, or JSON with file path.
+    Response: JSON with predictions.
+  - In analysis.routes.js use fetch() or axios to POST the DICOM file (read
+    from scan.path using fs.readFileSync or createReadStream) to the Python
+    service, then map the response to the format in section 3.
+
+  Option B: Model run from Node via child process
+  - Create a Python script that accepts a file path and optional args, runs
+    the model, and prints JSON to stdout.
+  - In analysis.routes.js use child_process.spawn('python', ['run_model.py', path, '--model', model]).
+  - Parse stdout and return the result. Handle stderr and non-zero exit codes.
+
+  Option C: External / cloud API
+  - If using a third-party medical imaging API, call it from the backend with
+    the DICOM file (or a preprocessed image), then map the API response to
+    the format in section 3.
+
+  Important:
+  - Do not block the Node event loop: run the model in a worker, child
+    process, or external service so the server stays responsive.
+  - Set a timeout (e.g. 60–120 seconds) and return 504 if the model does not
+    respond in time.
+  - Validate and sanitize scanId and file paths to avoid path traversal.
+
+
+--------------------------------------------------------------------------------
+5. FRONTEND: WIRE THE "RUN ANALYSIS" BUTTON
+--------------------------------------------------------------------------------
+
+  Step 5.1  Add state for results and error
+            - In AnalysisStudio.tsx add:
+              const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+              const [analysisError, setAnalysisError] = useState<string | null>(null);
+            - Define a type for the API response (e.g. results.summary, results.findings).
+
+  Step 5.2  Implement the run-analysis handler
+            - When "Run analysis" is clicked:
+              (1) Set running to true and clear analysisError.
+              (2) Read the selected model and sensitivity from the dropdown/slider
+                  (make them controlled state if they are not already).
+              (3) POST to ${API_URL}/api/analysis/run with body:
+                  { scanId: selectedId, model: selectedModel, sensitivity: sensitivityValue }
+              (4) On success: set analysisResult(response.results or full response), setRunning(false).
+              (5) On failure: set analysisError(message), setRunning(false).
+
+  Step 5.3  Disable the button when no scan is selected
+            - disabled={running || !selectedId}
+
+  Step 5.4  Display results in the "Results" section
+            - Replace "No results yet." with:
+              - If analysisError: show the error message.
+              - If analysisResult: show results.summary and list results.findings
+                (e.g. label, confidence, description).
+            - Optional: show a "View full report" link if you have a report page.
+
+
+--------------------------------------------------------------------------------
+6. FOLDER / FILE STRUCTURE (REFERENCE)
+--------------------------------------------------------------------------------
+
+  Backend/
+    server.js                    <- Register analysis routes here
+    routes/
+      scan.routes.js             <- Existing: GET /api/scan, /:id, /:id/file
+      analysis.routes.js         <- New: POST /api/analysis/run
+    models/
+      Scan.js                    <- Existing; scan.path is the DICOM path
+    uploads/
+      dicom/                     <- DICOM files stored here
+
+  Frontend (React)/
+    src/pages/app/
+      AnalysisStudio.tsx         <- Run analysis button, results UI, API call
+
+  AI model (decide with teammates)/
+    Option A: Separate repo or folder with Python service (e.g. Flask app).
+    Option B: Backend/scripts/run_model.py called via child_process.
+    Option C: No local model; backend calls external API.
+
+
+--------------------------------------------------------------------------------
+7. TESTING CHECKLIST
+--------------------------------------------------------------------------------
+
+  - [ ] Backend: POST /api/analysis/run with valid scanId returns 200 and
+        a result object in the agreed format.
+  - [ ] Backend: Invalid scanId returns 404 with error message.
+  - [ ] Backend: If the model fails or times out, return 500/504 and message.
+  - [ ] Frontend: Clicking "Run analysis" shows loading, then results or error.
+  - [ ] Frontend: Results section shows summary and findings when available.
+  - [ ] Frontend: Model and sensitivity from the sidebar are sent in the request.
+
+
+--------------------------------------------------------------------------------
+8. SUMMARY FOR TEAMMATES (AI MODEL SIDE)
+--------------------------------------------------------------------------------
+
+  - Input: The backend will provide either:
+    (1) A path to a DICOM file on disk, or
+    (2) The raw DICOM file (binary) in an HTTP request body or multipart form.
+  - Output: The model (or wrapper script) should return JSON that can be
+    mapped to: summary (string), findings (array of { label, confidence,
+    region?, description? }), and optional scores.
+  - Environment: Agree on how the model is run (Python service, script, or
+    API) and the exact endpoint or command line so the backend can call it.
+  - Performance: Consider timeouts; for long-running inference, consider a
+    job queue and polling instead of a single synchronous request.
+
+
+================================================================================
+  END OF PROCEDURES
+================================================================================

@@ -141,8 +141,8 @@ function renderDicomToCanvas(
   let center = windowCenter ?? (min + max) / 2;
   let width = windowWidth ?? Math.max(max - min, 1);
 
-  // Keep the initial render slightly smaller so the whole image fits in the viewer.
-  const maxDim = 520;
+  // Rectangular display: use a larger max so the image rectangle is bigger (length and width).
+  const maxDim = 800;
   let canvasWidth: number;
   let canvasHeight: number;
   if (rows >= cols) {
@@ -604,7 +604,11 @@ export default function AnalysisStudio() {
                                 contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                               >
                                 <div className="analysis-canvas-container">
-                                  <canvas ref={canvasRef} className="analysis-dicom-canvas" />
+                                  <canvas
+                                    ref={canvasRef}
+                                    className="analysis-dicom-canvas"
+                                    style={{ borderRadius: 0 }}
+                                  />
                                   <canvas
                                     ref={overlayRef}
                                     className="analysis-annotation-overlay"

@@ -121,7 +121,7 @@
 
 .analysis-dicom-wrap {
   max-width: 100%;
-  max-height: min(65vh, 560px);
+  max-height: min(85vh, 800px);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -170,6 +170,15 @@
   position: relative;
 }
 
+/* Ensure no child creates a circle – DICOM must stay rectangular */
+.analysis-zoom-wrapper * {
+  border-radius: 0 !important;
+  clip-path: none !important;
+}
+.analysis-zoom-wrapper .analysis-zoom-btn {
+  border-radius: 6px !important;
+}
+
 .analysis-zoom-controls {
   position: absolute;
   bottom: 0.75rem;
@@ -199,6 +208,13 @@
   color: var(--color-primary);
 }
 
+/* Force rectangular DICOM display – no circle shape */
+.analysis-dicom-canvas,
+.analysis-canvas-container {
+  border-radius: 0 !important;
+  clip-path: none !important;
+}
+
 .analysis-dicom-canvas {
   max-width: 100%;
   max-height: 100%;
@@ -206,12 +222,13 @@
   height: auto;
   display: block;
   object-fit: contain;
-  border-radius: 0;
+  overflow: visible;
 }
 
 .analysis-canvas-container {
   position: relative;
   display: inline-block;
+  overflow: visible;
 }
 
 .analysis-annotation-overlay {
