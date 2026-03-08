@@ -1,0 +1,150 @@
+================================================================================
+  HOW DICOM FILE DATA IS KEPT CONFIDENTIAL
+================================================================================
+
+This document explains how the project handles confidentiality and security of
+DICOM files, which contain medical imaging data and may include patient-related
+information (e.g. in DICOM tags such as Patient Name, Study Date).
+
+
+--------------------------------------------------------------------------------
+1. WHAT MAKES DICOM DATA SENSITIVE
+--------------------------------------------------------------------------------
+
+  - DICOM files contain image pixels and metadata (tags). Metadata can include
+    patient name, ID, study date, institution, and other identifiers (PHI –
+    Protected Health Information).
+  - Unauthorized access, disclosure, or loss of this data can violate privacy
+    regulations (e.g. HIPAA in the US, GDPR elsewhere) and harm patients.
+  - Confidentiality here means: only authorized users/systems can access the
+    data; data is stored and transmitted in a controlled way; and access is
+    traceable where possible.
+
+
+--------------------------------------------------------------------------------
+2. HOW THE PROJECT CURRENTLY HANDLES DICOM DATA
+--------------------------------------------------------------------------------
+
+  2.1  Storage
+  - DICOM files are saved on the backend server in a dedicated folder:
+    Backend/uploads/dicom/
+  - The exact path is stored in the database (Scan model, field "path"). The
+    path is server-side only; the frontend never sees the file system path.
+  - Only the backend reads and serves files from this directory. The backend
+    does not expose the upload directory to the internet as a static folder;
+    file access goes through the /api/scan/:id/file route.
+
+  2.2  Serving files (path safety)
+  - When the frontend requests a DICOM file, it sends: GET /api/scan/:id/file.
+  - The backend:
+    (a) Loads the scan from the database by id.
+    (b) Resolves the file path from scan.path.
+    (c) Checks that the resolved path lies inside the upload directory:
+        if (!absolutePath.startsWith(path.resolve(UPLOAD_DIR))) return 403.
+  - This prevents path traversal: a malicious id or path cannot be used to
+    read files outside Backend/uploads/dicom.
+
+  2.3  Upload
+  - Uploads go through POST /api/scan/upload. Only DICOM-type files are
+    accepted (by file extension and/or MIME type). Files are stored with a
+    safe filename (timestamp + sanitized original name). Size limit is
+    500 MB per file.
+
+  2.4  Database
+  - MongoDB stores scan metadata: originalName, path, size, mimeType,
+    patientName, studyDate, modality. The actual pixel data is only in the
+    files on disk, not in the database. Metadata itself is sensitive (e.g.
+    patient name), so the database should be protected (access control,
+    network, backups) like any system holding PHI.
+
+
+--------------------------------------------------------------------------------
+3. WHAT IS NOT YET ENFORCED (GAPS)
+--------------------------------------------------------------------------------
+
+  - Access control: The /api/scan and /api/scan/:id/file routes do not
+    currently require authentication. Anyone who knows or guesses a scan id
+    could in theory request the file. In production, these routes should
+    be protected (e.g. with the same auth middleware used for /api/auth/me)
+    so only logged-in (and optionally role-authorized) users can list and
+    download scans.
+  - Authorization: There is no per-user or per-organization isolation of
+    scans. Once auth is added, you may want to associate scans with a user
+    or tenant and only return/allow access to scans that belong to that
+    user or tenant.
+  - Transport: In development, traffic is usually HTTP (not encrypted). In
+    production, the frontend and backend should be served over HTTPS so
+    DICOM data and metadata are encrypted in transit.
+  - Audit: The application does not currently log who accessed which scan or
+    when. For stricter confidentiality and compliance, you could add audit
+    logs for scan access and uploads.
+
+
+--------------------------------------------------------------------------------
+4. RECOMMENDATIONS TO STRENGTHEN CONFIDENTIALITY
+--------------------------------------------------------------------------------
+
+  4.1  Require authentication for scan endpoints
+  - In Backend/routes/scan.routes.js, use the existing authMiddleware for
+    GET /, GET /:id, GET /:id/file, POST /upload, and DELETE /:id. Then
+    only users with a valid JWT can access or upload DICOM data.
+  - Ensure the frontend sends the Bearer token with every scan request (as
+    it already does for /api/auth/me).
+
+  4.2  Use HTTPS in production
+  - Deploy the frontend and backend behind HTTPS (e.g. reverse proxy with
+    TLS, or a hosting platform that provides HTTPS). This protects DICOM
+    data and cookies/tokens in transit.
+
+  4.3  Restrict who can see which scans
+  - Add a field to the Scan model such as userId (or organizationId). On
+    upload, set it from the authenticated user. On GET /api/scan and GET
+    /api/scan/:id/file, filter or check that the scan belongs to the
+    current user (or to a group/role the user is allowed to see).
+
+  4.4  Secure the server and database
+  - Run the backend and MongoDB in a restricted network; do not expose
+    MongoDB directly to the internet.
+  - Keep dependencies updated and follow security best practices for the
+    Node and MongoDB versions you use.
+  - Restrict filesystem permissions on Backend/uploads/dicom so only the
+    backend process can read/write there.
+
+  4.5  Optional: encrypt DICOM at rest
+  - For higher assurance, you could encrypt files on disk and decrypt when
+    serving. This requires key management and slightly more complex read/write
+    logic; it is optional for many academic or internal projects but
+    recommended in regulated environments.
+
+
+--------------------------------------------------------------------------------
+5. SUMMARY TABLE
+--------------------------------------------------------------------------------
+
+  Aspect              | Current state              | Recommendation
+  --------------------|----------------------------|------------------------------------------
+  Storage location    | Backend/uploads/dicom      | Keep; restrict OS permissions
+  Path safety         | Checked vs UPLOAD_DIR      | Keep
+  Who can access      | Anyone with scan id        | Add auth; restrict by user/tenant
+  Transport           | HTTP in dev                | Use HTTPS in production
+  Metadata in DB      | Stored (patientName etc.)  | Protect DB; consider access control
+  Audit               | None                       | Add logs for access/upload
+
+--------------------------------------------------------------------------------
+6. FOR YOUR REPORT OR DOCUMENTATION
+--------------------------------------------------------------------------------
+
+  You can state that:
+  - DICOM files are stored only on the backend in a dedicated directory and
+    are not exposed by direct file URL.
+  - Access to files is through an API that validates the file path to prevent
+    path traversal.
+  - Upload accepts only DICOM files and uses safe filenames.
+  - To fully protect confidentiality, the application should add authentication
+    and authorization to scan endpoints and use HTTPS in production; this
+    document outlines how the project currently handles the data and what
+    steps can be taken to strengthen confidentiality.
+
+================================================================================
+  END OF DOCUMENT
+================================================================================

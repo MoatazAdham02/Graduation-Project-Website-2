@@ -1,0 +1,154 @@
+================================================================================
+  HOW THE FRONTEND AND BACKEND TALK TO EACH OTHER
+================================================================================
+
+This document explains how the React frontend (Vite) and the Node/Express
+backend communicate in the Graduation Project website.
+
+
+--------------------------------------------------------------------------------
+1. HIGH-LEVEL FLOW
+--------------------------------------------------------------------------------
+
+  - The frontend runs in the browser (e.g. http://localhost:5173 during development).
+  - The backend runs as a separate Node server (e.g. http://localhost:4000).
+  - The browser sends HTTP requests from the frontend to the backend. The
+    backend responds with JSON (or file data). There is no WebSocket or
+    long-lived connection in the current setup; everything is request–response.
+
+
+--------------------------------------------------------------------------------
+2. HOW THE FRONTEND KNOWS THE BACKEND ADDRESS
+--------------------------------------------------------------------------------
+
+  - Every place that calls the API uses a base URL:
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  - VITE_API_URL is an environment variable. In development it is often not set,
+    so the frontend defaults to http://localhost:4000.
+  - For production, you set VITE_API_URL in a .env file (e.g. VITE_API_URL=https://api.yourproject.com)
+    so the built frontend points to your real backend.
+  - Files that use API_URL include:
+      - src/contexts/AuthContext.tsx   (login, register, /api/auth/me)
+      - src/pages/app/AnalysisStudio.tsx  (/api/scan, /api/scan/:id/file)
+      - src/pages/app/Patients.tsx     (/api/scan, DELETE /api/scan/:id)
+      - src/pages/app/UploadScan.tsx   (POST /api/scan/upload)
+      - src/pages/app/Compare.tsx      (POST /api/scan/upload)
+
+
+--------------------------------------------------------------------------------
+3. HOW REQUESTS ARE SENT (FETCH)
+--------------------------------------------------------------------------------
+
+  - The frontend uses the browser’s fetch() API. No axios or other library is
+    required; fetch is built into modern browsers.
+  - Examples:
+    - GET (list scans):
+        const res = await fetch(`${API_URL}/api/scan`);
+        const data = await res.json();
+    - GET (get DICOM file as binary):
+        const res = await fetch(`${API_URL}/api/scan/${selectedId}/file`);
+        const buf = await res.arrayBuffer();
+    - POST (upload):
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_URL}/api/scan/upload`, {
+          method: 'POST',
+          body: formData
+        });
+    - POST with JSON (e.g. login):
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+  - For protected routes (e.g. /api/auth/me), the frontend sends the JWT in
+    the header:
+        headers: { Authorization: `Bearer ${token}` }
+    The token is stored in localStorage under the key 'coronet-token' and
+    provided by AuthContext.
+
+
+--------------------------------------------------------------------------------
+4. HOW THE BACKEND ALLOWS THE FRONTEND (CORS)
+--------------------------------------------------------------------------------
+
+  - Browsers block JavaScript on one origin (e.g. localhost:5173) from
+    calling another origin (e.g. localhost:4000) unless the server explicitly
+    allows it. This is done with CORS (Cross-Origin Resource Sharing).
+  - In Backend/server.js:
+      app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+  - So the backend only allows requests from the frontend origin. In development
+    that is http://localhost:5173 (Vite). In production you set CORS_ORIGIN to
+    your frontend URL (e.g. https://yourproject.com).
+  - Without this, fetch() from the frontend to the backend would fail with a
+    CORS error in the browser console.
+
+
+--------------------------------------------------------------------------------
+5. BACKEND ROUTES (API SURFACE)
+--------------------------------------------------------------------------------
+
+  The backend mounts these route modules under /api:
+
+  - /api/health     GET   – Health check; returns database status.
+  - /api/auth        – auth.routes.js: register, login, /me (protected).
+  - /api/scan        – scan.routes.js: list scans, get one scan, get file, upload, delete.
+  - /api/items       – items.routes.js: CRUD for items (if used).
+
+  Scan-related endpoints used by the frontend:
+  - GET    /api/scan              – List all scans (returns id, originalName, size, createdAt, etc.).
+  - GET    /api/scan/:id          – Get one scan metadata.
+  - GET    /api/scan/:id/file     – Get the DICOM file bytes (backend streams the file).
+  - POST   /api/scan/upload       – Upload a DICOM file (multipart form, field "file").
+  - DELETE /api/scan/:id          – Delete a scan and its file.
+
+  Auth endpoints:
+  - POST   /api/auth/register     – Create user; returns token and user.
+  - POST   /api/auth/login        – Login; returns token and user.
+  - GET    /api/auth/me           – Current user (requires Authorization: Bearer <token>).
+
+
+--------------------------------------------------------------------------------
+6. DATA FORMATS
+--------------------------------------------------------------------------------
+
+  - Most responses are JSON. The backend uses res.json(...) or res.status(...).json({ error: '...' }).
+  - The only non-JSON response is GET /api/scan/:id/file, which sends the raw
+    DICOM file with Content-Type: application/dicom (or the stored mimeType).
+  - Errors are returned as JSON with an "error" field, e.g. { "error": "Scan not found" }.
+
+
+--------------------------------------------------------------------------------
+7. AUTHENTICATION FLOW (HOW AUTH TIES FRONTEND AND BACKEND)
+--------------------------------------------------------------------------------
+
+  - User logs in via the Login page → frontend calls POST /api/auth/login with
+    email and password.
+  - Backend validates credentials, returns a JWT and user object. Frontend
+    stores the token in localStorage and uses it for subsequent requests.
+  - On app load, AuthContext checks for a stored token and calls GET /api/auth/me
+    with Authorization: Bearer <token>. If valid, the user is considered logged in.
+  - Protected routes in the app (e.g. /app/*) are wrapped in ProtectedLayout,
+    which redirects to /login if there is no user. The scan and upload endpoints
+    themselves do not currently require auth; only the /api/auth/me endpoint
+    uses the auth middleware. So “who is logged in” is known by the frontend,
+    but the backend does not yet enforce that only logged-in users can access
+    scans. Adding authMiddleware to the scan routes would enforce that on the
+    backend.
+
+
+--------------------------------------------------------------------------------
+8. SUMMARY
+--------------------------------------------------------------------------------
+
+  - Frontend and backend talk over HTTP using fetch() and JSON (except DICOM
+    file download).
+  - Frontend base URL is set by VITE_API_URL (default http://localhost:4000).
+  - Backend allows the frontend origin via CORS.
+  - Auth uses JWT in the Authorization header; token is stored in localStorage.
+  - API routes are under /api (health, auth, scan, items). Scan routes handle
+    listing, metadata, file download, upload, and delete.
+
+================================================================================
+  END OF DOCUMENT
+================================================================================
