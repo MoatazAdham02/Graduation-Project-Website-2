@@ -16,7 +16,7 @@ Q: Why TypeScript instead of JavaScript?
 A: Type safety reduces runtime errors, improves IDE support and autocomplete,
    makes refactoring safer, and documents APIs (props, context) in code.
 
-Q: What is Vite and why use it instead of Create React App?
+**Q: What is Vite and why use it instead of Create React App?
 A: Vite is a modern build tool: uses native ES modules in dev for fast HMR,
    Rollup for production builds, minimal config. Faster and lighter than CRA.
 
@@ -33,14 +33,14 @@ A: VITE_API_URL in .env (e.g. http://localhost:4000). Vite exposes env vars
 2. ROUTING & LAYOUT
 --------------------------------------------------------------------------------
 
-Q: How is routing set up?
+**Q: How is routing set up?
 A: React Router v7: BrowserRouter, Routes, Route. Public routes (/, /login,
    /signup, /forgot-password, /privacy, /terms, /onboarding); /app is wrapped
    in ProtectedLayout and uses AppLayout with nested routes (index = Dashboard,
    patients, upload, analysis, reports, compare, share, analytics, admin,
    settings, notifications, help, search, status).
 
-Q: How do you protect routes so only logged-in users can access /app?
+**Q: How do you protect routes so only logged-in users can access /app?
 A: ProtectedLayout uses useAuth(); if loading, show a loading state; if !user,
    redirect to /login with <Navigate to="/login" replace />; otherwise
    render <Outlet /> so nested app routes render.
@@ -50,12 +50,12 @@ A: Wraps all /app pages: Sidebar, Header (title/subtitle), main content area
    with Breadcrumbs and <Outlet />, KeyboardShortcuts. usePageTitle() sets
    header title from current pathname. Sidebar can collapse (useLayout context).
 
-Q: How does the page title in the header get updated when navigating?
+**Q: How does the page title in the header get updated when navigating?
 A: usePageTitle() hook uses useLocation() and a routeTitles map; special cases
    for /app/patients/:id and /app/reports/:id (dynamic "Patient details" /
    "Report"). Header receives title and subtitle from this hook.
 
-Q: How do breadcrumbs work?
+**Q: How do breadcrumbs work?
 A: Breadcrumbs component reads pathname from useLocation(), splits into
    segments, maps segments to labels (pathLabels), and renders links for
    non-last segments and current page name for the last. Only shown when
@@ -65,24 +65,24 @@ A: Breadcrumbs component reads pathname from useLocation(), splits into
 3. STATE & AUTHENTICATION
 --------------------------------------------------------------------------------
 
-Q: How does authentication work on the frontend?
+**Q: How does authentication work on the frontend?
 A: AuthContext provides user, token, loading, login(), register(), logout().
    Token stored in localStorage under a key (e.g. coronet-token). On load,
    token is read and GET /api/auth/me is called with Bearer token; response
    sets user or clears token. login/register call API and store token + user.
 
-Q: Where is the JWT stored and what are the risks?
+**Q: Where is the JWT stored and what are the risks?
 A: Stored in localStorage (TOKEN_KEY). Risk: XSS can read it; for production
    consider httpOnly cookies or short-lived tokens + refresh flow. For a
    graduation project, localStorage is a common choice and easy to demo.
 
-Q: How do you send the token to the backend?
+**Q: How do you send the token to the backend?
 A: Every authenticated request: headers: { Authorization: `Bearer ${token}` }.
    Token is read from context (or localStorage) and attached by the code that
    calls fetch (e.g. in AuthContext for /api/auth/me, and in any other API
    calls that need auth).
 
-Q: What happens when the token is invalid or expired?
+**Q: What happens when the token is invalid or expired?
 A: /api/auth/me returns 401; AuthContext clears token and user (setToken(null),
    setUser(null)); on next render ProtectedLayout sees !user and redirects to
    /login.
@@ -100,12 +100,12 @@ A: AuthContext (user, login, logout, token); ThemeContext (theme, toggle);
    ToastContext (toasts, addToast); ConfirmContext (confirm dialog for
    destructive actions). All wrap the app in App.tsx.
 
-Q: How do toasts work?
+**Q: How do toasts work?
 A: ToastProvider holds toast state; addToast(type, message) adds a toast;
    toasts are rendered (e.g. fixed corner) and auto-dismiss or dismiss on
    click. Used for success/error/info feedback after upload, clear, etc.
 
-Q: How do you implement “Are you sure?” confirmations?
+**Q: How do you implement “Are you sure?” confirmations?
 A: ConfirmContext exposes confirm({ title, message, confirmLabel, variant,
    onConfirm }). A modal is shown; on confirm, onConfirm runs and modal
    closes. Used e.g. for “Clear all files” on Upload Scan.
@@ -114,19 +114,19 @@ A: ConfirmContext exposes confirm({ title, message, confirmLabel, variant,
 5. FORMS & USER INPUT
 --------------------------------------------------------------------------------
 
-Q: How do you handle form state in Login/Signup?
+**Q: How do you handle form state in Login/Signup?
 A: [Prepare: e.g. useState for email, password, name; controlled inputs;
    onSubmit call login/register from AuthContext; errors from API shown
    in UI or via toast.]
 
-Q: How does the Upload Scan page handle file selection?
+**Q: How does the Upload Scan page handle file selection?
 A: Input type="file" with accept=".dcm,.dicom,application/dicom" and
    multiple; optional drag-and-drop (onDragEnter/Leave/Over, onDrop).
    Files kept in React state (array); validation: only DICOM allowed, show
    message for non-DICOM. Optional: dicom-parser in browser to extract
    metadata (patientName, studyDate, modality) before upload.
 
-Q: How do you validate DICOM files on the client?
+**Q: How do you validate DICOM files on the client?
 A: File extension .dcm/.dicom and/or MIME type; optionally parse with
    dicom-parser to read tags and validate structure. Backend still enforces
    validation.
@@ -135,18 +135,18 @@ A: File extension .dcm/.dicom and/or MIME type; optionally parse with
 6. API COMMUNICATION
 --------------------------------------------------------------------------------
 
-Q: How does the frontend call the backend?
+**Q: How does the frontend call the backend?
 A: fetch() to API_URL (from import.meta.env.VITE_API_URL). JSON for auth
    (Content-Type: application/json); FormData for scan upload (multipart).
    Responses parsed with .json() or .text() then JSON.parse where needed.
 
-Q: How do you handle loading and error states?
+**Q: How do you handle loading and error states?
 A: [Prepare: e.g. useState(loading), setLoading(true) before fetch,
    setLoading(false) in finally; try/catch and res.ok checks; error message
    in state or toast; optional LoadingBar component for global navigation
    loading.]
 
-Q: Do you use React Query, SWR, or plain fetch?
+**Q: Do you use React Query, SWR, or plain fetch?
 A: [Prepare: e.g. Plain fetch and local state. No React Query/SWR; for this
    project size manual fetch was sufficient.]
 
@@ -154,17 +154,17 @@ A: [Prepare: e.g. Plain fetch and local state. No React Query/SWR; for this
 7. DICOM & MEDICAL IMAGING (FRONTEND)
 --------------------------------------------------------------------------------
 
-Q: How do you parse DICOM metadata in the browser?
+**Q: How do you parse DICOM metadata in the browser?
 A: dicom-parser library: parseDicom(Uint8Array) returns a DataSet; read tags
    (e.g. patient name, study date, modality) via element offsets. Used in
    UploadScan to pre-fill or display metadata before/after upload.
 
-Q: Do you display DICOM images in the browser?
+**Q: Do you display DICOM images in the browser?
 A: [Prepare: e.g. Yes in Analysis Studio or similar – possibly using
    react-zoom-pan-pinch for viewer; or only metadata/list, no pixel display.
    Be accurate to what you implemented.]
 
-Q: What libraries did you use for DICOM or imaging?
+**Q: What libraries did you use for DICOM or imaging?
 A: dicom-parser for metadata; optionally react-zoom-pan-pinch for image
    zoom/pan if you have a viewer. No full PACS viewer – focus on workflow
    and metadata.
@@ -184,7 +184,7 @@ A: :root defines --color-primary, --color-bg, --font-sans, --text-sm, --radius-m
    --shadow-md, --transition-fast, etc. [data-theme="dark"] overrides for
    dark mode. Ensures consistency and easy theming.
 
-Q: How does dark mode work?
+**Q: How does dark mode work?
 A: ThemeContext holds theme ('light'|'dark'); toggled somewhere (e.g. Header or
    Settings); applied as data-theme="dark" on root (html or body). CSS
    variables in [data-theme="dark"] override light values.
@@ -204,18 +204,18 @@ A: [Prepare: e.g. responsive layout with media queries, sidebar collapse or
 9. ACCESSIBILITY & QUALITY
 --------------------------------------------------------------------------------
 
-Q: What accessibility features did you implement?
+**Q: What accessibility features did you implement?
 A: [Prepare: e.g. semantic HTML (nav, main, section); aria-label where needed;
    SkipLink for keyboard users; focus management (useFocusTrap in modals);
    keyboard shortcuts (KeyboardShortcuts component); sufficient contrast
    (CSS variables).]
 
-Q: How do you handle client-side errors?
+**Q: How do you handle client-side errors?
 A: ErrorBoundary wraps the app (or main tree); catches React errors and
    shows a fallback UI instead of blank screen. API errors handled per
    request (toast or inline message).
 
-Q: Is there offline handling?
+**Q: Is there offline handling?
 A: OfflineBanner component may listen to online/offline events and show a
    banner when navigator.onLine is false. API calls will fail; user is
    informed.
@@ -234,7 +234,7 @@ A: [Prepare: e.g. React.lazy and Suspense for route-level splitting if
    implemented; otherwise mention that with Vite the bundle is still
    manageable for this size.]
 
-Q: How do you structure components (folder/file organization)?
+**Q: How do you structure components (folder/file organization)?
 A: src/pages for route-level components (Landing, Login, app/Dashboard,
    etc.); src/components for reusable pieces (EmptyState, ErrorBoundary,
    layout: AppLayout, Sidebar, Header, Breadcrumbs); src/contexts for
@@ -245,26 +245,26 @@ A: src/pages for route-level components (Landing, Login, app/Dashboard,
 11. SPECIFIC PAGES (BE READY TO WALK THROUGH)
 --------------------------------------------------------------------------------
 
-Q: Walk me through what happens when a user opens the Dashboard.
+**Q: Walk me through what happens when a user opens the Dashboard.
 A: User is already in /app (ProtectedLayout passed). AppLayout renders;
    usePageTitle() returns Dashboard title. Dashboard.tsx may show loading
    skeleton, then stats (from local data or API) and recent activity;
    quick action links (Upload, Analysis, Compare, Reports) with animations.
 
-Q: How does the Compare page work?
+**Q: How does the Compare page work?
 A: Two panels (Scan A, Scan B); each has file input (hidden) and button to
    trigger it. On file select, upload to POST /api/scan/upload, then store
    returned scan id and name in state. Optional “Run comparison” button.
    Staggered enter animations for panels and divider.
 
-Q: How does Upload Scan work end-to-end?
+**Q: How does Upload Scan work end-to-end?
 A: Drag-and-drop or file picker → filter DICOM only → add to files state →
    optional metadata extraction with dicom-parser → list files with remove
    per file and “Clear all” (with confirm) → “Start upload” sends each file
    via POST /api/scan/upload (FormData: file, patientName, studyDate,
    modality) → show toasts and clear list on success.
 
-Q: Where do Reports come from?
+**Q: Where do Reports come from?
 A: [Prepare: e.g. from API GET /api/... if you have reports endpoint; or
    mock data for demo. Reports list and ReportDetail by id; link from
    dashboard or sidebar.]
