@@ -663,7 +663,7 @@ export default function AnalysisStudio() {
                           {metadata['Modality'] != null && (
                             <div className="analysis-metadata-item">
                               <span className="analysis-metadata-label">Modality</span>
-                              <span className="analysis-metadata-value analysis-metadata-modality">{metadata['Modality']}</span>
+                              <span className="analysis-metadata-badge">{metadata['Modality']}</span>
                             </div>
                           )}
                         </div>
