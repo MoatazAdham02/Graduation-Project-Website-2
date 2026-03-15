@@ -1,0 +1,300 @@
+================================================================================
+COROnet – BACKEND: Professor Discussion Questions & Preparation
+================================================================================
+All questions a professor might ask when discussing the website’s backend.
+Covers both Node.js (Express) and FastAPI implementations and MongoDB.
+
+--------------------------------------------------------------------------------
+1. TECHNOLOGY & ARCHITECTURE
+--------------------------------------------------------------------------------
+
+Q: What backend technologies did you use?
+A: Two options, same API contract: (1) Node.js with Express, (2) FastAPI
+   (Python). MongoDB for database. Same .env (MONGODB_URI, JWT_SECRET,
+   CORS_ORIGIN); frontend works with either.
+
+Q: Why offer both Node and FastAPI?
+A: Flexibility (team preference, JavaScript vs Python); same endpoints so
+   frontend does not change. FastAPI suits future ML/AI integration; Node
+   shares language with React.
+
+Q: Describe the high-level backend architecture.
+A: REST API over HTTP. Routes: /api/health, /api/auth (login, register, me),
+   /api/scan (list, get by id, get file, upload, delete), /api/items (CRUD).
+   Middleware: CORS, JSON body parser, auth middleware for protected routes.
+   Database: MongoDB (users, scans, optionally items). File storage: disk
+   (uploads/dicom) with paths stored in DB.
+
+Q: How does the frontend know which backend to use?
+A: Environment variable: VITE_API_URL (e.g. http://localhost:4000 for Node or
+   port 8000 for FastAPI). Backend port: Node default 4000, FastAPI default
+   8000 (configurable via PORT).
+
+--------------------------------------------------------------------------------
+2. DATABASE (MONGODB)
+--------------------------------------------------------------------------------
+
+Q: Why MongoDB?
+A: Flexible schema for scans (originalName, path, size, patientName, studyDate,
+   modality, etc.); easy to add fields; good fit for document-shaped data.
+   Mongoose (Node) or motor/pymongo (FastAPI) for ODM/driver.
+
+Q: What collections do you use?
+A: users (name, email, password hash, timestamps); scans (originalName, path,
+   size, mimeType, patientName, studyDate, modality, timestamps); optionally
+   items for generic CRUD. [Adjust if your schema differs.]
+
+Q: How do you connect to MongoDB?
+A: Node: connectDB() in config/db.js using mongoose.connect(MONGODB_URI).
+   FastAPI: get_client() or get_db() using motor or pymongo, MONGODB_URI from
+   settings. Connection at startup; health endpoint pings DB to verify.
+
+Q: How are MongoDB ObjectIds exposed in the API?
+A: Stored as _id; returned as string (e.g. id: scan._id or str(scan["_id"]))
+   in JSON. Frontend and URL params use string id; backend converts to
+   ObjectId for findById/find_one when needed.
+
+--------------------------------------------------------------------------------
+3. AUTHENTICATION & AUTHORIZATION
+--------------------------------------------------------------------------------
+
+Q: How does user registration work?
+A: POST /api/auth/register with name, email, password. Validate (name/email
+   non-empty, password length e.g. >= 8). Check email not already registered;
+   hash password (bcrypt), create user in DB, sign JWT with userId, return
+   token and user (id, name, email). Node: User model with pre-save hash;
+   FastAPI: hash with passlib/bcrypt before insert.
+
+Q: How does login work?
+A: POST /api/auth/login with email, password. Find user by email; compare
+   password with stored hash (user.comparePassword in Node, verify in Python).
+   If valid, sign JWT with userId, return token and user object.
+
+Q: How is the JWT generated and what does it contain?
+A: Node: jwt.sign({ userId: user._id }, process.env.JWT_SECRET). FastAPI:
+   encode payload with userId and exp (e.g. 7 days). Algorithm HS256. Secret
+   from env (JWT_SECRET); must be strong and not committed.
+
+Q: How do you protect routes that require authentication?
+A: Auth middleware: read Authorization header, extract Bearer token, verify
+   JWT and load user from DB; attach user to request (req.user / dependency);
+   if invalid or missing, return 401. Node: authMiddleware applied to
+   /api/auth/me and any protected route; FastAPI: get_current_user
+   dependency on protected endpoints.
+
+Q: Which endpoints are public and which are protected?
+A: Public: POST /api/auth/login, POST /api/auth/register, GET /api/health.
+   Protected (require valid JWT): GET /api/auth/me, GET/POST/DELETE /api/scan,
+   GET /api/scan/:id, GET /api/scan/:id/file. [Adjust per your actual use of
+   auth on scan routes – some projects leave scan list/upload public for
+   demo; clarify your choice.]
+
+--------------------------------------------------------------------------------
+4. PASSWORD SECURITY
+--------------------------------------------------------------------------------
+
+Q: How are passwords stored?
+A: Hashed with bcrypt (salt rounds e.g. 10). Never store plain text. Node:
+   userSchema.pre('save') hashes before save; comparePassword method uses
+   bcrypt.compare. FastAPI: passlib with bcrypt scheme.
+
+Q: Why bcrypt and not MD5 or SHA?
+A: Bcrypt is designed for passwords: slow, salted, adaptive (can increase
+   cost). MD5/SHA are fast and unsalted → vulnerable to rainbow tables
+   and brute force.
+
+--------------------------------------------------------------------------------
+5. SCAN UPLOAD & FILE HANDLING
+--------------------------------------------------------------------------------
+
+Q: How does DICOM upload work on the backend?
+A: POST /api/scan/upload, multipart/form-data, field "file". Validate
+   extension (.dcm, .dicom) and/or MIME (application/dicom); enforce max
+   size (e.g. 500 MB). Save file to disk (uploads/dicom), generate safe
+   filename (e.g. timestamp + sanitized original). Create scan document in
+   DB with path, size, originalName, mimeType, optional patientName, studyDate,
+   modality from form body. Return 201 with scan id and metadata.
+
+Q: How do you prevent malicious or invalid uploads?
+A: File filter: only .dcm/.dicom extension or application/dicom MIME; reject
+   others with 400. Limit file size (multer limits / FastAPI max size).
+   Store files outside web root; serve only via controlled endpoint that
+   checks path and permissions. Optional: validate DICOM structure or
+   virus scan.
+
+Q: Where are uploaded files stored?
+A: Directory on disk (e.g. uploads/dicom), path in config (UPLOAD_DIR in
+   FastAPI, path.join in Node). Absolute path stored in DB; resolved when
+   serving file. Directory created at startup if not exists.
+
+Q: How do you avoid path traversal when serving a scan file?
+A: Resolve stored path to absolute; ensure it lies inside the allowed upload
+   directory (e.g. path.startsWith(UPLOAD_DIR)). If not, return 403. Never
+   send user-supplied paths directly to the filesystem.
+
+Q: Do you deduplicate or skip duplicate uploads?
+A: [Node scan.routes.js: optional check by originalName + studyDate +
+   patientName; if exists, return 201 with skipped: true and reason. FastAPI
+   may have similar logic.] Prepare to explain your duplicate policy.
+
+--------------------------------------------------------------------------------
+6. SCAN LIST, GET BY ID, GET FILE, DELETE
+--------------------------------------------------------------------------------
+
+Q: How does listing scans work?
+A: GET /api/scan: query DB (Scan.find()), sort by createdAt desc, project
+   needed fields (no path or sensitive data), return array of { id,
+   originalName, size, createdAt, patientName, studyDate, modality }.
+
+Q: How do you serve the actual DICOM file?
+A: GET /api/scan/:id/file: find scan by id; resolve path, validate inside
+   upload dir; check file exists; set Content-Type (e.g. application/dicom);
+   send file (res.sendFile in Node, FileResponse in FastAPI). Optional:
+   require auth so only authenticated users can download.
+
+Q: How does scan deletion work?
+A: DELETE /api/scan/:id: find scan; resolve path; if inside upload dir and
+   file exists, delete file from disk; then delete document from DB. Return
+   success even if file delete fails (e.g. already missing) but record
+   is removed.
+
+--------------------------------------------------------------------------------
+7. ERROR HANDLING & VALIDATION
+--------------------------------------------------------------------------------
+
+Q: How do you handle errors and return consistent responses?
+A: Try/catch in route handlers; 4xx for client errors (validation, not found,
+   unauthorized), 5xx for server errors. JSON body: { error: "message" }.
+   Node: central error middleware sets status (e.g. LIMIT_FILE_SIZE → 400)
+   and sends JSON. FastAPI: HTTPException and exception handler to normalize
+   detail format.
+
+Q: How do you validate request body (e.g. auth)?
+A: Check required fields (name, email, password); trim strings; validate
+   length (e.g. password >= 8); normalize email (lowercase). Return 400 with
+   clear message if invalid. FastAPI can use Pydantic models for automatic
+   validation and 422 responses.
+
+Q: What happens if MongoDB is down?
+A: Health endpoint (/api/health) pings DB and returns databaseOk: false.
+   Other requests may 500 or be caught; frontend can show error or retry.
+   Startup: connect before listening; optional retry logic.
+
+--------------------------------------------------------------------------------
+8. CORS & SECURITY
+--------------------------------------------------------------------------------
+
+Q: Why is CORS needed and how is it configured?
+A: Frontend (e.g. localhost:5173) and API (e.g. localhost:4000) are different
+   origins; browser blocks cross-origin requests unless server sends
+   Access-Control-Allow-Origin. Backend sets CORS (e.g. origin from
+   CORS_ORIGIN env, or allow_origins in FastAPI). Credentials allowed if
+   using cookies.
+
+Q: What other security measures did you consider?
+A: [Prepare: HTTPS in production; strong JWT_SECRET; no sensitive data in
+   logs; rate limiting; input validation; path traversal prevention; secure
+   headers (e.g. Helmet in Node).]
+
+--------------------------------------------------------------------------------
+9. FASTAPI-SPECIFIC (IF USING PYTHON BACKEND)
+--------------------------------------------------------------------------------
+
+Q: How is the FastAPI app structured?
+A: main.py: create FastAPI app, lifespan for DB connection, CORS middleware,
+   exception handler for HTTPException, include_router for auth, scan,
+   items. config.py: pydantic-settings BaseSettings for MONGODB_URI,
+   JWT_SECRET, CORS_ORIGIN, UPLOAD_DIR from env. Routers in routers/
+   (auth, scan, items).
+
+Q: How does auth work in FastAPI?
+A: get_current_user dependency: HTTPBearer, extract token, decode JWT, load
+   user from MongoDB; raise HTTPException 401 if invalid. Protected routes
+   declare Depends(get_current_user). Passlib + bcrypt for passwords;
+   python-jose or PyJWT for JWT.
+
+Q: How is file upload handled in FastAPI?
+A: UploadFile in endpoint; read content; validate extension/MIME and size;
+   write to UPLOAD_DIR with safe filename; insert scan document; return
+   metadata. Async for non-blocking I/O.
+
+--------------------------------------------------------------------------------
+10. NODE-SPECIFIC (IF USING EXPRESS)
+--------------------------------------------------------------------------------
+
+Q: How is the Express app structured?
+A: server.js: load dotenv, create app, cors(), express.json(), health route,
+   mount routes (/api/items, /api/scan, /api/auth), global error middleware,
+   connectDB() then listen. Routes in routes/; models in models/; middleware
+   in middleware/auth.js.
+
+Q: How is file upload handled in Node?
+A: Multer: diskStorage with destination (UPLOAD_DIR) and filename (timestamp +
+   sanitized name); limits (fileSize); fileFilter for .dcm/.dicom and MIME.
+   upload.single('file') on POST /upload; req.file has path, size, etc.;
+   create Scan document and return response.
+
+--------------------------------------------------------------------------------
+11. DATA MODELS
+--------------------------------------------------------------------------------
+
+Q: What does the User model/schema look like?
+A: Node (Mongoose): name (String, required), email (String, required,
+   unique, lowercase), password (String, required, minLength 8), timestamps.
+   Pre-save hook hashes password; method comparePassword(candidate).
+   FastAPI: same fields in MongoDB; no ODM schema file, use in code or
+   Pydantic for API.
+
+Q: What does the Scan model/schema look like?
+A: originalName, path, size, mimeType (default application/dicom),
+   patientName, studyDate, modality (default ''), timestamps. path is
+   filesystem path; not sent in list response, only in serve-file logic.
+
+--------------------------------------------------------------------------------
+12. TESTING & DEPLOYMENT (BACKEND)
+--------------------------------------------------------------------------------
+
+Q: How did you test the backend?
+A: [Prepare: Postman or curl for endpoints; test login, register, upload,
+   list, get file, delete; invalid token, missing fields, wrong file type.
+   Optional: unit tests for auth logic or file validation; integration
+   tests with test DB.]
+
+Q: How would you deploy the backend in production?
+A: [Prepare: run on server or container (Docker); use process manager
+   (PM2 for Node, gunicorn/uvicorn for FastAPI); HTTPS (reverse proxy);
+   env vars for MONGODB_URI, JWT_SECRET, CORS_ORIGIN; secure file storage;
+   backups for DB and uploads; logging and monitoring.]
+
+--------------------------------------------------------------------------------
+13. MEDICAL DATA & COMPLIANCE
+--------------------------------------------------------------------------------
+
+Q: How do you ensure DICOM data is kept confidential?
+A: [Tie to Study Materials/DICOM_Data_Confidentiality.txt: access control
+   (auth), files not publicly listed, serve only via authenticated
+   endpoint; secure storage; optional encryption at rest; audit logging.
+   In production: compliance (e.g. HIPAA) and policies.]
+
+Q: Is the scan list or file download restricted to the uploader?
+A: [Prepare: in current code, scan list and file may be available to any
+   authenticated user. For real deployment you might add userId to Scan
+   and filter by req.user so users see only their own scans. Explain
+   your design choice.]
+
+--------------------------------------------------------------------------------
+QUICK REFERENCE – BACKEND STACK
+--------------------------------------------------------------------------------
+Node: Express, mongoose, bcryptjs, jsonwebtoken, multer, cors, dotenv.
+FastAPI: FastAPI, uvicorn, pydantic-settings, motor/pymongo, python-jose,
+passlib[bcrypt], python-multipart.
+DB: MongoDB (users, scans, items).
+Endpoints: /api/health, /api/auth/*, /api/scan/*, /api/items/*.
+Key files (Node): server.js, routes/auth.routes.js, routes/scan.routes.js,
+models/User.js, models/Scan.js, middleware/auth.js.
+Key files (FastAPI): main.py, config.py, auth.py, routers/scan.py,
+database.py.
+
+================================================================================
+End of Backend questions. Use with Frontend_Professor_Questions.txt for full picture.
+================================================================================

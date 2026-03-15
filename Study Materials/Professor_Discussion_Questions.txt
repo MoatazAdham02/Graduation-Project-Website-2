@@ -1,0 +1,198 @@
+================================================================================
+COROnet – Graduation Project Discussion: Professor Questions & Preparation
+================================================================================
+Use this as a checklist to prepare for your discussion (e.g. with a doctor/professor).
+Your project: AI-powered cardiac imaging platform (COROnet) – DICOM upload, reports,
+patients, compare studies, analytics. Frontend: React + TypeScript + Vite. Backend:
+Node or FastAPI; DB: MongoDB. Auth: JWT.
+
+--------------------------------------------------------------------------------
+1. PROJECT OVERVIEW & MOTIVATION
+--------------------------------------------------------------------------------
+
+Q: What is COROnet in one sentence?
+A: COROnet is an AI-powered cardiac imaging platform that helps clinicians manage
+   DICOM scans, generate reports, and compare studies (echo, cardiac CT, MRI) in
+   one place.
+
+Q: Why did you choose this topic? What problem does it solve?
+A: [Prepare: e.g. fragmented tools, manual report turnaround, need for one
+   platform for multiple modalities, AI-assisted triage and accuracy.]
+
+Q: Who are the main users?
+A: Clinicians (cardiologists, cardiac imaging directors, technicians), possibly
+   admins. Mention "doctors" and "departments" from your landing testimonials.
+
+Q: What are the main features of the system?
+A: Landing + auth (login/signup/forgot password); Dashboard with stats and quick
+   actions; Patients list and patient detail; Upload DICOM scans; Analysis Studio;
+   Reports and report detail; Compare two DICOM studies; Share case; Analytics;
+   Admin; Settings; Notifications; Help; Search; Status. Be ready to demo 2–3 flows.
+
+--------------------------------------------------------------------------------
+2. MEDICAL / CLINICAL DOMAIN
+--------------------------------------------------------------------------------
+
+Q: What is DICOM and why is it important?
+A: DICOM (Digital Imaging and Communications in Medicine) is the international
+   standard for medical imaging. It defines how images and metadata (patient ID,
+   study date, modality) are stored and exchanged. Your app accepts .dcm/.dicom
+   and extracts metadata (e.g. patient name, study date, modality) for display.
+
+Q: What modalities does COROnet support?
+A: Echo (echocardiography), Cardiac CT, Cardiac MRI – as reflected in the dashboard
+   and recent activity (e.g. "Echo", "Cardiac CT", "Cardiac MRI").
+
+Q: How do you ensure medical data is handled responsibly?
+A: [Tie to your Study Materials: DICOM_Data_Confidentiality.txt – confidentiality,
+   access control, secure storage. Mention: only authorized users (JWT), secure
+   backend, optional encryption at rest/transit if you implemented it.]
+
+Q: Can a doctor rely on the "AI" results in production?
+A: [Prepare: your project demonstrates workflow and integration; any AI/accuracy
+   metrics (e.g. "98%") are illustrative or from literature. In real deployment,
+   validation, regulatory approval, and clinical responsibility are needed.]
+
+--------------------------------------------------------------------------------
+3. TECHNICAL ARCHITECTURE
+--------------------------------------------------------------------------------
+
+Q: Describe the high-level architecture (frontend, backend, database).
+A: Frontend: React 19 + TypeScript + Vite, SPA. Backend: either Node.js (Express)
+   or FastAPI (Python); same API (auth, scan upload/list, health). Database:
+   MongoDB (users, scans metadata). Optional: separate uploads directory for
+   DICOM files.
+
+Q: How does the frontend communicate with the backend?
+A: REST API over HTTP/HTTPS. Environment variable (e.g. VITE_API_URL) for API
+   base URL. Auth: JWT in Authorization header (Bearer token). Key endpoints:
+   POST /api/auth/login, GET /api/auth/me, POST /api/scan/upload, GET /api/scan,
+   GET /api/scan/:id/file. [Reference: Study Materials/Frontend_Backend_Communication.txt]
+
+Q: Why MongoDB?
+A: [Prepare: flexible schema for scans (originalName, size, patientName, studyDate,
+   modality, createdAt); easy to extend; you may have used it for users as well.
+   Reference: Study Materials/MongoDB_Steps.txt, mongo setup 2.txt.]
+
+Q: Why offer both Node and FastAPI backends?
+A: Same API contract so the frontend works with either. Flexibility for the team
+   (JavaScript vs Python), or future ML/AI integration in Python.
+
+--------------------------------------------------------------------------------
+4. SECURITY & AUTHENTICATION
+--------------------------------------------------------------------------------
+
+Q: How is the user authenticated?
+A: Login returns a JWT. Frontend stores it (e.g. localStorage or memory) and sends
+   it in the Authorization header for protected routes. ProtectedLayout (or
+   similar) redirects unauthenticated users to login.
+
+Q: How do you protect sensitive routes and data?
+A: Backend validates JWT on protected endpoints (e.g. /api/scan, /api/auth/me).
+   Frontend: protected routes wrapped in a layout that requires auth; no token →
+   redirect to login.
+
+Q: What about DICOM file storage and access?
+A: Files stored in a configured upload directory; served via backend (e.g.
+   GET /api/scan/:id/file) with access control (only authenticated users or
+   scan owner). Reference: DICOM_Data_Confidentiality.txt.
+
+--------------------------------------------------------------------------------
+5. FRONTEND IMPLEMENTATION
+--------------------------------------------------------------------------------
+
+Q: Why React and TypeScript?
+A: React: component-based UI, large ecosystem, good for dashboards and forms.
+   TypeScript: type safety, fewer runtime errors, better IDE support and
+   maintainability.
+
+Q: What is Vite and why use it?
+A: Vite is the build tool and dev server: fast HMR, native ES modules, optimized
+   production builds. Replaces CRA for a modern React setup.
+
+Q: How do you handle routing and layout?
+A: React Router (BrowserRouter, Routes, Route). /app is protected; AppLayout
+   provides sidebar, header, breadcrumbs, and Outlet for nested routes (Dashboard,
+   patients, upload, analysis, reports, compare, analytics, etc.).
+
+Q: How did you implement animations and interactivity?
+A: Framer Motion for page transitions, staggered lists, hover/tap on cards and
+   buttons. Global CSS for card/button/input hover and transitions. AnimatePresence
+   for route changes and list item add/remove (e.g. upload list).
+
+Q: How do you parse DICOM metadata in the browser?
+A: dicom-parser library: parse DICOM buffer and read tags (e.g. patient name,
+   study date, modality) for display or pre-fill before upload. Used in
+   UploadScan (and possibly elsewhere).
+
+--------------------------------------------------------------------------------
+6. BACKEND & API
+--------------------------------------------------------------------------------
+
+Q: How does DICOM upload work end-to-end?
+A: User selects/drops files → frontend validates .dcm/.dicom (and optionally
+   extracts metadata with dicom-parser) → POST /api/scan/upload (multipart)
+   → backend validates extension/MIME, size limit (e.g. 500 MB), stores file and
+   metadata in DB → returns scan id/metadata.
+
+Q: How do you prevent invalid or malicious uploads?
+A: Backend: check file extension (.dcm, .dicom) and/or MIME type
+   (application/dicom); enforce max file size; store files outside web root with
+   controlled access. Optional: virus scan, validation of DICOM structure.
+
+Q: What is stored in the database for a scan?
+A: Typically: _id, originalName, size, patientName, studyDate, modality,
+   createdAt, and path or reference to the stored file.
+
+--------------------------------------------------------------------------------
+7. TESTING, DEPLOYMENT & LIMITATIONS
+--------------------------------------------------------------------------------
+
+Q: How did you test the application?
+A: [Prepare: manual testing of main flows (login, upload, list scans, reports);
+   optional: unit tests for utils, API tests with fetch/Postman; browser dev tools.]
+
+Q: What are the current limitations?
+A: [Examples: mock data in some views (e.g. patient list or reports), no real
+   AI model integration, single-user or simple role model, no HL7/FHIR, etc.
+   Be honest and concise.]
+
+Q: How would you deploy this in a real hospital environment?
+A: [Prepare: HTTPS, env-based config, secure DB and file storage, access control,
+   logging, backup, compliance (e.g. HIPAA if applicable), optional containerization
+   (Docker) and reverse proxy.]
+
+--------------------------------------------------------------------------------
+8. YOUR ROLE & LEARNING OUTCOMES
+--------------------------------------------------------------------------------
+
+Q: What was your personal contribution to the project?
+A: [Prepare a clear answer: e.g. frontend architecture, DICOM upload + metadata
+   extraction, Compare page, animations, auth flow, API integration, etc.]
+
+Q: What was the most challenging part and how did you solve it?
+A: [Prepare: e.g. DICOM parsing in the browser, JWT + protected routes, file
+   upload size/validation, state management for toasts/confirm, or accessibility.]
+
+Q: What would you add or improve next?
+A: [Examples: real AI integration, more robust validation, audit logs, role-based
+   access, HL7/FHIR, mobile responsiveness, offline support, performance
+   optimization.]
+
+--------------------------------------------------------------------------------
+9. QUICK REFERENCE – STACK & FILES
+--------------------------------------------------------------------------------
+
+Frontend:  React 19, TypeScript, Vite, React Router, Framer Motion, dicom-parser,
+           lucide-react, react-zoom-pan-pinch.
+Backend:   Node (Express) or FastAPI; MongoDB.
+Key pages: Landing, Login/Signup, Dashboard, Patients, PatientDetail, UploadScan,
+           AnalysisStudio, Reports, ReportDetail, Compare, ShareCase, Analytics,
+           Admin, Settings, Help, Search, Status.
+Study Materials you have: Frontend_Backend_Communication.txt, DICOM_Data_Confidentiality.txt,
+           Implementing_AI_Models_Procedures.txt, MongoDB_Steps.txt, mongo setup 2.txt.
+           Use these to align your answers with what you documented.
+
+================================================================================
+End of document. Good luck with your discussion.
+================================================================================
