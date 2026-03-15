@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Play, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
+import { Play, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2, User, Calendar, Scan, LayoutGrid } from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import './AnalysisStudio.css';
 import './Annotation.css';
@@ -33,6 +33,14 @@ const annotationTools = [
 ];
 
 const annotationColors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0d9488', '#0284c7', '#7c3aed'];
+
+function formatStudyDate(raw: string): string {
+  const s = String(raw).trim();
+  if (s.length === 8 && /^\d{8}$/.test(s)) {
+    return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  }
+  return s || '—';
+}
 
 function getTag(dataSet: dicomParser.DataSet, tag: string, type: 'string' | 'int' = 'string'): string | number | undefined {
   try {
@@ -626,15 +634,66 @@ export default function AnalysisStudio() {
                       </div>
                     </div>
                     <div className="analysis-metadata">
-                      <h4>Patient Info.</h4>
-                      <dl>
-                        {Object.entries(metadata).map(([k, v]) => (
-                          <div key={k}>
-                            <dt>{k}</dt>
-                            <dd>{v}</dd>
+                      <div className="analysis-metadata-header">
+                        <Scan size={20} className="analysis-metadata-header-icon" />
+                        <h4>Patient & Study</h4>
+                      </div>
+                      {metadata['Patient Name'] != null && (
+                        <div className="analysis-metadata-block analysis-metadata-patient">
+                          <div className="analysis-metadata-row analysis-metadata-patient-name">
+                            <User size={16} />
+                            <span>{metadata['Patient Name']}</span>
                           </div>
-                        ))}
-                      </dl>
+                        </div>
+                      )}
+                      <div className="analysis-metadata-block">
+                        <div className="analysis-metadata-block-title">
+                          <Calendar size={14} />
+                          <span>Study</span>
+                        </div>
+                        <div className="analysis-metadata-grid">
+                          {metadata['Study Date'] != null && (
+                            <div className="analysis-metadata-item">
+                              <span className="analysis-metadata-label">Date</span>
+                              <span className="analysis-metadata-value">
+                                {formatStudyDate(metadata['Study Date'])}
+                              </span>
+                            </div>
+                          )}
+                          {metadata['Modality'] != null && (
+                            <div className="analysis-metadata-item">
+                              <span className="analysis-metadata-label">Modality</span>
+                              <span className="analysis-metadata-value analysis-metadata-modality">{metadata['Modality']}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="analysis-metadata-block">
+                        <div className="analysis-metadata-block-title">
+                          <LayoutGrid size={14} />
+                          <span>Image</span>
+                        </div>
+                        <div className="analysis-metadata-grid">
+                          {metadata['Rows'] != null && metadata['Columns'] != null && (
+                            <div className="analysis-metadata-item">
+                              <span className="analysis-metadata-label">Dimensions</span>
+                              <span className="analysis-metadata-value">{metadata['Rows']} × {metadata['Columns']}</span>
+                            </div>
+                          )}
+                          {metadata['Frames'] != null && (
+                            <div className="analysis-metadata-item">
+                              <span className="analysis-metadata-label">Frames</span>
+                              <span className="analysis-metadata-value">{metadata['Frames']}</span>
+                            </div>
+                          )}
+                          {metadata['Bits Allocated'] != null && (
+                            <div className="analysis-metadata-item">
+                              <span className="analysis-metadata-label">Bit depth</span>
+                              <span className="analysis-metadata-value">{metadata['Bits Allocated']} bit</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

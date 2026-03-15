@@ -344,36 +344,112 @@
 }
 
 .analysis-metadata {
-  padding: 0.75rem;
+  padding: 0;
   background: var(--color-bg-subtle);
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: var(--text-sm);
-  flex: 0 0 240px;
-  min-width: 200px;
+  flex: 0 0 260px;
+  min-width: 220px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
 }
 
-.analysis-metadata h4 {
-  margin: 0 0 0.5rem;
+.analysis-metadata-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.analysis-metadata-header-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.analysis-metadata-header h4 {
+  margin: 0;
   font-weight: 600;
+  font-size: var(--text-sm);
   color: var(--color-text);
+  letter-spacing: 0.01em;
 }
 
-.analysis-metadata dl {
-  margin: 0;
-  display: grid;
-  gap: 0.25rem 1rem;
-  grid-template-columns: auto 1fr;
+.analysis-metadata-block {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.analysis-metadata dt {
-  margin: 0;
+.analysis-metadata-block:last-child {
+  border-bottom: none;
+}
+
+.analysis-metadata-block-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.analysis-metadata-block-title svg {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.analysis-metadata-patient {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+}
+
+.analysis-metadata-patient-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.analysis-metadata-patient-name svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.analysis-metadata-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem 0;
+}
+
+.analysis-metadata-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.analysis-metadata-label {
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   font-weight: 500;
 }
 
-.analysis-metadata dd {
-  margin: 0;
+.analysis-metadata-value {
+  font-size: var(--text-sm);
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-metadata-modality {
+  font-weight: 600;
+  color: var(--color-primary);
 }
 
 .analysis-error {
