@@ -64,7 +64,13 @@ export default function Notifications() {
         time: timeAgo(scan.createdAt),
         unread: true,
       }));
-      setNotifications(mapped);
+      setNotifications((prev) => {
+        const prevById = new Map(prev.map((item) => [item.id, item]));
+        return mapped.map((item) => {
+          const existing = prevById.get(item.id);
+          return existing ? { ...item, unread: existing.unread } : item;
+        });
+      });
       setError(null);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;

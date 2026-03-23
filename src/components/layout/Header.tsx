@@ -93,7 +93,13 @@ export default function Header({ title, subtitle }: HeaderProps) {
             time: timeAgo(scan.createdAt),
             unread: true,
           }));
-        setNotifications(mapped);
+        setNotifications((prev) => {
+          const prevById = new Map(prev.map((item) => [item.id, item]));
+          return mapped.map((item) => {
+            const existing = prevById.get(item.id);
+            return existing ? { ...item, unread: existing.unread } : item;
+          });
+        });
       } catch {
         // keep current notifications on transient errors
       }
