@@ -1,28 +1,100 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import './Notifications.css';
 
-const allNotifications = [
-  { id: '1', title: 'Analysis complete', message: 'CT Chest — John Doe has been processed.', time: '2 min ago', unread: true },
-  { id: '2', title: 'Report ready', message: 'MRI Brain report is available for download.', time: '1 hr ago', unread: true },
-  { id: '3', title: 'Case shared', message: 'You were added to case #4521.', time: 'Yesterday', unread: false },
-  { id: '4', title: 'Upload complete', message: 'CT Abdomen — 120 slices uploaded.', time: '2 days ago', unread: false },
-  { id: '5', title: 'Report ready', message: 'X-Ray Spine — Robert K. finalized.', time: '3 days ago', unread: false },
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const TOKEN_KEY = 'coronet-token';
+
+type ScanItem = {
+  id: string;
+  originalName: string;
+  createdAt: string;
+  patientName: string;
+  modality: string;
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  unread: boolean;
+};
 
 const PAGE_SIZE = 3;
 
+function timeAgo(dateInput: string) {
+  const ts = new Date(dateInput).getTime();
+  if (Number.isNaN(ts)) return 'just now';
+  const diff = Date.now() - ts;
+  const sec = Math.max(0, Math.floor(diff / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 export default function Notifications() {
-  const [notifications, setNotifications] = useState(allNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [hiddenIds, setHiddenIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { addToast } = useToast();
 
+  const fetchNotifications = async (signal?: AbortSignal) => {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const res = await fetch(`${API_URL}/api/scan`, {
+        signal,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error('Unable to load notifications');
+      const data = (await res.json()) as ScanItem[];
+      const mapped: NotificationItem[] = (Array.isArray(data) ? data : []).map((scan) => ({
+        id: scan.id,
+        title: 'Upload complete',
+        message: `${scan.modality || 'DICOM'} — ${scan.patientName || 'Unknown patient'} (${scan.originalName}) uploaded.`,
+        time: timeAgo(scan.createdAt),
+        unread: true,
+      }));
+      setNotifications(mapped);
+      setError(null);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setError(err instanceof Error ? err.message : 'Unable to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchNotifications(controller.signal);
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void fetchNotifications();
+    }, 10000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const visibleNotifications = useMemo(
+    () => notifications.filter((n) => !hiddenIds.includes(n.id)),
+    [hiddenIds, notifications]
+  );
+
   const filtered = filter === 'unread'
-    ? notifications.filter((n) => n.unread)
-    : notifications;
+    ? visibleNotifications.filter((n) => n.unread)
+    : visibleNotifications;
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
 
@@ -59,6 +131,7 @@ export default function Notifications() {
           Mark all as read
         </button>
       </div>
+      {error && <p className="notifications-error">{error}</p>}
 
       <motion.ul
         className="notifications-list"
@@ -66,7 +139,9 @@ export default function Notifications() {
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
       >
-        {filtered.length === 0 ? (
+        {loading ? (
+          <li className="notifications-empty">Loading notifications...</li>
+        ) : filtered.length === 0 ? (
           <li className="notifications-empty">No notifications.</li>
         ) : (
           visible.map((n) => (
@@ -86,11 +161,27 @@ export default function Notifications() {
             </div>
             <div className="notification-actions">
               {n.unread && (
-                <button type="button" className="notification-btn" title="Mark read">
+                <button
+                  type="button"
+                  className="notification-btn"
+                  title="Mark read"
+                  onClick={() => {
+                    setNotifications((prev) =>
+                      prev.map((x) => (x.id === n.id ? { ...x, unread: false } : x))
+                    );
+                  }}
+                >
                   <Check size={18} />
                 </button>
               )}
-              <button type="button" className="notification-btn" title="Delete">
+              <button
+                type="button"
+                className="notification-btn"
+                title="Delete"
+                onClick={() => {
+                  setHiddenIds((prev) => [...prev, n.id]);
+                }}
+              >
                 <Trash2 size={18} />
               </button>
             </div>

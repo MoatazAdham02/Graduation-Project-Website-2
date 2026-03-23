@@ -9,11 +9,38 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './Header.css';
 
-const MOCK_NOTIFICATIONS = [
-  { id: '1', title: 'Report ready', body: 'CT Chest — John Doe has been finalized.', time: '2 min ago', unread: true },
-  { id: '2', title: 'Case shared', body: 'Maria G. shared a case with you.', time: '1 hr ago', unread: true },
-  { id: '3', title: 'Analysis complete', body: 'AI analysis finished for MRI Brain.', time: 'Yesterday', unread: false },
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const TOKEN_KEY = 'coronet-token';
+
+type ScanItem = {
+  id: string;
+  originalName: string;
+  createdAt: string;
+  patientName: string;
+  modality: string;
+};
+
+type HeaderNotification = {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  unread: boolean;
+};
+
+function timeAgo(dateInput: string) {
+  const ts = new Date(dateInput).getTime();
+  if (Number.isNaN(ts)) return 'just now';
+  const diff = Date.now() - ts;
+  const sec = Math.max(0, Math.floor(diff / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 type HeaderProps = {
   title?: string;
@@ -25,7 +52,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const { setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -45,6 +72,43 @@ export default function Header({ title, subtitle }: HeaderProps) {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchNotifications = async (signal?: AbortSignal) => {
+      try {
+        const token = localStorage.getItem(TOKEN_KEY);
+        const res = await fetch(`${API_URL}/api/scan`, {
+          signal,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as ScanItem[];
+        const mapped = (Array.isArray(data) ? data : [])
+          .slice(0, 6)
+          .map((scan) => ({
+            id: scan.id,
+            title: 'Upload complete',
+            body: `${scan.modality || 'DICOM'} — ${scan.patientName || 'Unknown patient'} (${scan.originalName}) uploaded.`,
+            time: timeAgo(scan.createdAt),
+            unread: true,
+          }));
+        setNotifications(mapped);
+      } catch {
+        // keep current notifications on transient errors
+      }
+    };
+
+    const controller = new AbortController();
+    void fetchNotifications(controller.signal);
+    const intervalId = window.setInterval(() => {
+      void fetchNotifications();
+    }, 10000);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -145,13 +209,19 @@ export default function Header({ title, subtitle }: HeaderProps) {
                   )}
                 </div>
                 <ul className="header-notifications-list">
-                  {notifications.map((n) => (
-                    <li key={n.id} className={`header-notification-item ${n.unread ? 'header-notification-unread' : ''}`}>
-                      <div className="header-notification-title">{n.title}</div>
-                      <div className="header-notification-body">{n.body}</div>
-                      <div className="header-notification-time">{n.time}</div>
+                  {notifications.length === 0 ? (
+                    <li className="header-notification-item">
+                      <div className="header-notification-body">No notifications yet.</div>
                     </li>
-                  ))}
+                  ) : (
+                    notifications.map((n) => (
+                      <li key={n.id} className={`header-notification-item ${n.unread ? 'header-notification-unread' : ''}`}>
+                        <div className="header-notification-title">{n.title}</div>
+                        <div className="header-notification-body">{n.body}</div>
+                        <div className="header-notification-time">{n.time}</div>
+                      </li>
+                    ))
+                  )}
                 </ul>
                 <Link to="/app/notifications" className="header-dropdown-footer" onClick={() => setNotificationsOpen(false)}>
                   View all notifications
