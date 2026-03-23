@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Menu, Bell, User, Moon, Sun, Settings, LogOut } from 'lucide-react';
@@ -7,6 +7,11 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import {
+  getReadScanNotificationIds,
+  markScanNotificationsRead,
+  subscribeScanNotificationReadChanges,
+} from '../../lib/notificationReadState';
 import './Header.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -53,6 +58,21 @@ export default function Header({ title, subtitle }: HeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
+  const scansRef = useRef<ScanItem[]>([]);
+
+  const mapScansToHeaderNotifications = useCallback((scans: ScanItem[]) => {
+    const readIds = getReadScanNotificationIds();
+    return scans.slice(0, 6).map((scan) => {
+      const id = String(scan.id);
+      return {
+        id,
+        title: 'Upload complete',
+        body: `${scan.modality || 'DICOM'} — ${scan.patientName || 'Unknown patient'} (${scan.originalName}) uploaded.`,
+        time: timeAgo(scan.createdAt),
+        unread: !readIds.has(id),
+      };
+    });
+  }, []);
   const { setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -84,22 +104,9 @@ export default function Header({ title, subtitle }: HeaderProps) {
         });
         if (!res.ok) return;
         const data = (await res.json()) as ScanItem[];
-        const mapped = (Array.isArray(data) ? data : [])
-          .slice(0, 6)
-          .map((scan) => ({
-            id: scan.id,
-            title: 'Upload complete',
-            body: `${scan.modality || 'DICOM'} — ${scan.patientName || 'Unknown patient'} (${scan.originalName}) uploaded.`,
-            time: timeAgo(scan.createdAt),
-            unread: true,
-          }));
-        setNotifications((prev) => {
-          const prevById = new Map(prev.map((item) => [item.id, item]));
-          return mapped.map((item) => {
-            const existing = prevById.get(item.id);
-            return existing ? { ...item, unread: existing.unread } : item;
-          });
-        });
+        const list = Array.isArray(data) ? data : [];
+        scansRef.current = list;
+        setNotifications(mapScansToHeaderNotifications(list));
       } catch {
         // keep current notifications on transient errors
       }
@@ -115,10 +122,20 @@ export default function Header({ title, subtitle }: HeaderProps) {
       controller.abort();
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [mapScansToHeaderNotifications]);
+
+  useEffect(
+    () =>
+      subscribeScanNotificationReadChanges(() => {
+        setNotifications(mapScansToHeaderNotifications(scansRef.current));
+      }),
+    [mapScansToHeaderNotifications]
+  );
 
   const unreadCount = notifications.filter((n) => n.unread).length;
   const markAllRead = () => {
+    // Persist immediately (sync) so polling fetch can't overwrite before localStorage updates.
+    markScanNotificationsRead(notifications.map((n) => n.id));
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     addToast('success', 'All notifications marked as read');
   };

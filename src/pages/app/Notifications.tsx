@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import {
+  getReadScanNotificationIds,
+  markScanNotificationsRead,
+  subscribeScanNotificationReadChanges,
+} from '../../lib/notificationReadState';
 import './Notifications.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -48,6 +53,20 @@ export default function Notifications() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { addToast } = useToast();
 
+  const mapScansToNotifications = (data: ScanItem[]): NotificationItem[] => {
+    const readIds = getReadScanNotificationIds();
+    return (Array.isArray(data) ? data : []).map((scan) => {
+      const id = String(scan.id);
+      return {
+        id,
+        title: 'Upload complete',
+        message: `${scan.modality || 'DICOM'} — ${scan.patientName || 'Unknown patient'} (${scan.originalName}) uploaded.`,
+        time: timeAgo(scan.createdAt),
+        unread: !readIds.has(id),
+      };
+    });
+  };
+
   const fetchNotifications = async (signal?: AbortSignal) => {
     try {
       const token = localStorage.getItem(TOKEN_KEY);
@@ -57,20 +76,7 @@ export default function Notifications() {
       });
       if (!res.ok) throw new Error('Unable to load notifications');
       const data = (await res.json()) as ScanItem[];
-      const mapped: NotificationItem[] = (Array.isArray(data) ? data : []).map((scan) => ({
-        id: scan.id,
-        title: 'Upload complete',
-        message: `${scan.modality || 'DICOM'} — ${scan.patientName || 'Unknown patient'} (${scan.originalName}) uploaded.`,
-        time: timeAgo(scan.createdAt),
-        unread: true,
-      }));
-      setNotifications((prev) => {
-        const prevById = new Map(prev.map((item) => [item.id, item]));
-        return mapped.map((item) => {
-          const existing = prevById.get(item.id);
-          return existing ? { ...item, unread: existing.unread } : item;
-        });
-      });
+      setNotifications(mapScansToNotifications(data));
       setError(null);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -93,6 +99,13 @@ export default function Notifications() {
     return () => window.clearInterval(intervalId);
   }, []);
 
+  useEffect(() => subscribeScanNotificationReadChanges(() => {
+    setNotifications((prev) => {
+      const readIds = getReadScanNotificationIds();
+      return prev.map((n) => ({ ...n, unread: !readIds.has(n.id) }));
+    });
+  }), []);
+
   const visibleNotifications = useMemo(
     () => notifications.filter((n) => !hiddenIds.includes(n.id)),
     [hiddenIds, notifications]
@@ -105,6 +118,8 @@ export default function Notifications() {
   const hasMore = visibleCount < filtered.length;
 
   const markAllRead = () => {
+    // Persist immediately (sync) so polling fetch can't overwrite before localStorage updates.
+    markScanNotificationsRead(notifications.map((n) => n.id));
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     addToast('success', 'All notifications marked as read');
   };
@@ -172,6 +187,7 @@ export default function Notifications() {
                   className="notification-btn"
                   title="Mark read"
                   onClick={() => {
+                    markScanNotificationsRead([n.id]);
                     setNotifications((prev) =>
                       prev.map((x) => (x.id === n.id ? { ...x, unread: false } : x))
                     );
