@@ -1,22 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity, Users, FileText, TrendingUp, ArrowUpRight } from 'lucide-react';
 import EmptyState from '../../components/EmptyState';
 import './Dashboard.css';
 
-const stats = [
-  { label: 'Cardiac studies today', value: '24', icon: Activity, change: '+12%', color: 'primary' },
-  { label: 'Active patients', value: '156', icon: Users, change: '+5', color: 'accent' },
-  { label: 'Echo reports generated', value: '89', icon: FileText, change: '+18%', color: 'success' },
-  { label: 'Analysis accuracy', value: '98.2%', icon: TrendingUp, change: '+0.4%', color: 'info' },
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const TOKEN_KEY = 'coronet-token';
 
-const recent = [
-  { id: '1', patient: 'John D.', type: 'Echo', date: '2 min ago', status: 'Completed' },
-  { id: '2', patient: 'Maria L.', type: 'Cardiac CT', date: '15 min ago', status: 'Analyzing' },
-  { id: '3', patient: 'Robert K.', type: 'Cardiac MRI', date: '1 hr ago', status: 'Completed' },
-];
+type ScanItem = {
+  id: string;
+  originalName: string;
+  size: number;
+  createdAt: string;
+  patientName: string;
+  studyDate: string;
+  modality: string;
+};
+
+function timeAgo(dateInput: string) {
+  const ts = new Date(dateInput).getTime();
+  if (Number.isNaN(ts)) return 'just now';
+  const diff = Date.now() - ts;
+  const sec = Math.max(0, Math.floor(diff / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 function StatSkeleton() {
   return (
@@ -49,10 +63,70 @@ function RecentListSkeleton() {
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [scans, setScans] = useState<ScanItem[]>([]);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
+  const fetchScans = async (signal?: AbortSignal) => {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const res = await fetch(`${API_URL}/api/scan`, {
+        signal,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        throw new Error('Unable to load activity stream');
+      }
+      const data = (await res.json()) as ScanItem[];
+      setScans(Array.isArray(data) ? data : []);
+      setActivityError(null);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setActivityError(err instanceof Error ? err.message : 'Unable to load activity stream');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
+    const controller = new AbortController();
+    void fetchScans(controller.signal);
+    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void fetchScans();
+    }, 10000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const stats = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const studiesToday = scans.filter((s) => new Date(s.createdAt).getTime() >= startOfToday.getTime()).length;
+    const activePatients = new Set(
+      scans.map((s) => (s.patientName || '').trim()).filter(Boolean)
+    ).size;
+    const echoScans = scans.filter((s) => s.modality?.toLowerCase().includes('echo')).length;
+
+    return [
+      { label: 'Cardiac studies today', value: String(studiesToday), icon: Activity, change: 'live', color: 'primary' },
+      { label: 'Active patients', value: String(activePatients), icon: Users, change: 'from scans', color: 'accent' },
+      { label: 'Echo studies uploaded', value: String(echoScans), icon: FileText, change: 'auto-updating', color: 'success' },
+      { label: 'Total scans', value: String(scans.length), icon: TrendingUp, change: 'refreshes every 10s', color: 'info' },
+    ];
+  }, [scans]);
+
+  const recent = useMemo(
+    () => scans.slice(0, 8).map((s) => ({
+      id: s.id,
+      patient: s.patientName || 'Unknown patient',
+      type: s.modality || 'DICOM study',
+      date: timeAgo(s.createdAt),
+      status: 'Uploaded',
+    })),
+    [scans]
+  );
 
   return (
     <div className="dashboard">
@@ -98,17 +172,18 @@ export default function Dashboard() {
         >
           <div className="dashboard-section-header">
             <h2>Recent activity</h2>
-            <Link to="/app/analysis" className="dashboard-section-link">
+            <Link to="/app/upload" className="dashboard-section-link">
               View all <ArrowUpRight size={16} />
             </Link>
           </div>
-          <p className="dashboard-last-login">Last sign-in: Today</p>
+          <p className="dashboard-last-login">Live stream: updates every 10 seconds</p>
+          {activityError && <p className="dashboard-error">{activityError}</p>}
           {loading ? (
             <RecentListSkeleton />
           ) : recent.length === 0 ? (
             <EmptyState
               title="No recent activity"
-              description="Scans and reports will appear here once you start using COROnet."
+              description="Recent uploads will appear here in real time."
               actionLabel="Upload your first scan"
               actionTo="/app/upload"
             />
