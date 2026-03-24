@@ -1,8 +1,39 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Play, Pause, Download, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2, User, Calendar, Scan, LayoutGrid } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Download,
+  Loader2,
+  Layers,
+  Sliders,
+  FileImage,
+  PenTool,
+  Square,
+  Circle,
+  Type,
+  Eraser,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Trash2,
+  User,
+  Calendar,
+  Scan,
+  LayoutGrid,
+  ArrowRight,
+  Ruler,
+  StickyNote,
+  Undo2,
+  Redo2,
+  Eye,
+  EyeOff,
+  Pencil,
+  MapPin,
+  Repeat,
+} from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import './AnalysisStudio.css';
 import './Annotation.css';
@@ -13,7 +44,7 @@ type ScanItem = { id: string; originalName: string; size: number; createdAt: str
 
 type AnnotationShape = {
   id: string;
-  type: 'rect' | 'circle' | 'text' | 'path';
+  type: 'rect' | 'circle' | 'text' | 'path' | 'arrow' | 'measurement' | 'note';
   color: string;
   opacity: number;
   x: number;
@@ -22,14 +53,32 @@ type AnnotationShape = {
   h?: number;
   text?: string;
   points?: { x: number; y: number }[];
+  frameIndex: number;
+  visible?: boolean;
 };
 
-const annotationTools = [
+type ParsedScanData = {
+  arrayBuffer: ArrayBuffer;
+  metadata: Record<string, string>;
+  numberOfFrames: number;
+};
+
+type CornerLabels = { tl: string; tr: string; bl: string; br: string };
+
+type DrawTool = AnnotationShape['type'] | 'pen' | 'eraser';
+
+const annotationTools: { id: DrawTool; icon: typeof PenTool; label: string }[] = [
   { id: 'pen', icon: PenTool, label: 'Freehand' },
   { id: 'rect', icon: Square, label: 'Rectangle' },
   { id: 'circle', icon: Circle, label: 'Circle' },
   { id: 'text', icon: Type, label: 'Text' },
   { id: 'eraser', icon: Eraser, label: 'Eraser' },
+];
+
+const templateTools: { id: 'arrow' | 'measurement' | 'note'; icon: typeof ArrowRight; label: string }[] = [
+  { id: 'arrow', icon: ArrowRight, label: 'Arrow' },
+  { id: 'measurement', icon: Ruler, label: 'Measure' },
+  { id: 'note', icon: StickyNote, label: 'Note' },
 ];
 
 const annotationColors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0d9488', '#0284c7', '#7c3aed'];
@@ -56,6 +105,108 @@ function getTag(dataSet: dicomParser.DataSet, tag: string, type: 'string' | 'int
   } catch {
     return undefined;
   }
+}
+
+function formatAcquisitionTime(raw: string | undefined): string | undefined {
+  if (!raw || !String(raw).trim()) return undefined;
+  const s = String(raw).trim();
+  if (s.length >= 6 && /^\d/.test(s)) {
+    const h = s.slice(0, 2);
+    const m = s.slice(2, 4);
+    const sec = s.slice(4, 6);
+    return `${h}:${m}:${sec}`;
+  }
+  return s;
+}
+
+/** Row / column spacing in mm (DICOM: row then column) */
+function parsePixelSpacingMm(raw: string | undefined): [number, number] | null {
+  if (!raw) return null;
+  const parts = String(raw)
+    .split('\\')
+    .map((p) => parseFloat(p.trim()))
+    .filter((n) => !Number.isNaN(n));
+  if (parts.length >= 2) return [parts[0], parts[1]];
+  if (parts.length === 1) return [parts[0], parts[0]];
+  return null;
+}
+
+/** Keep preview canvas bounded to reduce GPU/RAM (ImageData scales with pixel count). */
+const PREVIEW_MAX_DIM = 640;
+
+function canvasDimsFromRowsCols(rows: number, cols: number): { cw: number; ch: number } {
+  const maxDim = PREVIEW_MAX_DIM;
+  if (rows >= cols) {
+    return { ch: maxDim, cw: Math.round((maxDim * cols) / rows) };
+  }
+  return { cw: maxDim, ch: Math.round((maxDim * rows) / cols) };
+}
+
+function mmPerCanvasPixel(metadata: Record<string, string>): number | null {
+  const rows = Number(metadata['Rows'] || 0);
+  const spacing = parsePixelSpacingMm(metadata['Pixel Spacing']);
+  if (!rows || !spacing) return null;
+  const { ch } = canvasDimsFromRowsCols(rows, Number(metadata['Columns'] || 0) || rows);
+  return (rows * spacing[0]) / ch;
+}
+
+function measurementLabelMm(dxCanvas: number, dyCanvas: number, metadata: Record<string, string>): string {
+  const rows = Number(metadata['Rows'] || 0);
+  const cols = Number(metadata['Columns'] || 0);
+  const sp = parsePixelSpacingMm(metadata['Pixel Spacing']);
+  if (!rows || !cols || !sp) return `${Math.hypot(dxCanvas, dyCanvas).toFixed(0)} px`;
+  const { cw, ch } = canvasDimsFromRowsCols(rows, cols);
+  const dRow = (dyCanvas / ch) * rows;
+  const dCol = (dxCanvas / cw) * cols;
+  const mm = Math.hypot(dRow * sp[0], dCol * sp[1]);
+  return `${mm.toFixed(2)} mm`;
+}
+
+/** Approximate corner markers for display (HFS axial default; refined by position/modality). */
+function orientationCornerLabels(metadata: Record<string, string>): CornerLabels {
+  const pos = (metadata['Patient Position'] || '').toUpperCase();
+  const mod = (metadata['Modality'] || '').toUpperCase();
+  if ((mod === 'MR' || mod === 'CT') && (pos.includes('SAG') || pos.includes('HFDL') || pos.includes('HFD'))) {
+    return { tl: 'H', tr: 'F', bl: 'A', br: 'P' };
+  }
+  if (pos.includes('FFP') || pos.includes('HFP')) {
+    return { tl: 'R', tr: 'L', bl: 'P', br: 'A' };
+  }
+  return { tl: 'R', tr: 'L', bl: 'A', br: 'P' };
+}
+
+function distPointToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+function drawArrowLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  withHead: boolean
+) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  if (!withHead) return;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const L = 11;
+  const spread = 0.42;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - L * Math.cos(angle - spread), y2 - L * Math.sin(angle - spread));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - L * Math.cos(angle + spread), y2 - L * Math.sin(angle + spread));
+  ctx.stroke();
 }
 
 function renderDicomToCanvas(
@@ -86,6 +237,21 @@ function renderDicomToCanvas(
   metadata['Bits Allocated'] = String(bitsAllocated);
   if (numberOfFrames > 1) metadata['Frames'] = String(numberOfFrames);
 
+  const acq = formatAcquisitionTime(getTag(dataSet, 'x00080033') as string | undefined);
+  if (acq) metadata['Acquisition Time'] = acq;
+  const seriesDesc = getTag(dataSet, 'x0008103e') as string | undefined;
+  if (seriesDesc) metadata['Series Description'] = seriesDesc;
+  const pixelSp = getTag(dataSet, 'x00280030') as string | undefined;
+  if (pixelSp) metadata['Pixel Spacing'] = pixelSp;
+  const inst = getTag(dataSet, 'x00080080') as string | undefined;
+  if (inst) metadata['Institution Name'] = inst;
+  const mfg = getTag(dataSet, 'x00080070') as string | undefined;
+  if (mfg) metadata['Manufacturer'] = mfg;
+  const patPos = getTag(dataSet, 'x00185100') as string | undefined;
+  if (patPos) metadata['Patient Position'] = patPos;
+  const iop = getTag(dataSet, 'x00200037') as string | undefined;
+  if (iop) metadata['Image Orientation Patient'] = iop;
+
   const elements = (dataSet as unknown as { elements: Record<string, { dataOffset: number; length: number }> }).elements;
   let pixelDataElement = elements?.x7fe00010 ?? elements?.x7FE00010;
   if (!pixelDataElement && elements) {
@@ -110,14 +276,15 @@ function renderDicomToCanvas(
 
   const bytesPerPixel = bitsAllocated / 8;
   const numPixelsPerFrame = rows * cols * samplesPerPixel;
-  const numPixels = numPixelsPerFrame * numberOfFrames;
-  const pixelDataLength = numPixels * bytesPerPixel;
   const frameOffsetBytes = frameIndex * numPixelsPerFrame * bytesPerPixel;
-  const frameEndBytes = frameOffsetBytes + numPixelsPerFrame * bytesPerPixel;
   const frameByteLength = numPixelsPerFrame * bytesPerPixel;
 
   let min = Infinity;
   let max = -Infinity;
+
+  /** Full scans on 8k² frames allocate huge CPU time; sample for windowing. */
+  const sampleStride =
+    numPixelsPerFrame > 2_000_000 ? Math.max(2, Math.ceil(numPixelsPerFrame / 2_000_000)) : 1;
 
   if (bitsAllocated === 16) {
     const view = new DataView(
@@ -126,7 +293,7 @@ function renderDicomToCanvas(
       Math.min(frameByteLength, pixelDataElement.length - frameOffsetBytes)
     );
     const n = Math.floor(view.byteLength / 2);
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; i += sampleStride) {
       const v = pixelRepresentation === 1 ? view.getInt16(i * 2, true) : view.getUint16(i * 2, true);
       if (v < min) min = v;
       if (v > max) max = v;
@@ -137,7 +304,7 @@ function renderDicomToCanvas(
       dataSet.byteArray.byteOffset + pixelDataElement.dataOffset + frameOffsetBytes,
       Math.min(frameByteLength, pixelDataElement.length - frameOffsetBytes)
     );
-    for (let i = 0; i < view.length; i++) {
+    for (let i = 0; i < view.length; i += sampleStride) {
       const v = view[i];
       if (v < min) min = v;
       if (v > max) max = v;
@@ -146,11 +313,10 @@ function renderDicomToCanvas(
 
   const windowCenter = dataSet.int16('x00281050');
   const windowWidth = dataSet.int16('x00281051');
-  let center = windowCenter ?? (min + max) / 2;
-  let width = windowWidth ?? Math.max(max - min, 1);
+  const center = windowCenter ?? (min + max) / 2;
+  const width = windowWidth ?? Math.max(max - min, 1);
 
-  // Rectangular display: use a larger max so the image rectangle is bigger (length and width).
-  const maxDim = 800;
+  const maxDim = PREVIEW_MAX_DIM;
   let canvasWidth: number;
   let canvasHeight: number;
   if (rows >= cols) {
@@ -184,7 +350,7 @@ function renderDicomToCanvas(
     for (let x = 0; x < canvasWidth; x++) {
       const r = Math.min(Math.floor(y * scaleY), rows - 1);
       const c = Math.min(Math.floor(x * scaleX), cols - 1);
-      let v = getPixel(r, c);
+      const v = getPixel(r, c);
       const low = center - width / 2;
       const high = center + width / 2;
       const t = (v - low) / (high - low);
@@ -208,17 +374,77 @@ export default function AnalysisStudio() {
   const [loadingScans, setLoadingScans] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<Record<string, string>>({});
-  const [parsedData, setParsedData] = useState<{ arrayBuffer: ArrayBuffer; metadata: Record<string, string>; numberOfFrames: number } | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedScanData | null>(null);
   const [running, setRunning] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isCinePlaying, setIsCinePlaying] = useState(false);
+  const [cineLoop, setCineLoop] = useState(true);
+  const [viewportScale, setViewportScale] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const viewportScaleRafRef = useRef<number | null>(null);
+  const lastCommittedScaleRef = useRef(1);
 
-  const [activeTool, setActiveTool] = useState<'rect' | 'circle' | 'text' | 'eraser' | 'pen'>('pen');
+  const onViewportTransformed = useCallback((ref: { state: { scale?: number } }) => {
+    const s = ref.state.scale ?? 1;
+    if (Math.abs(s - lastCommittedScaleRef.current) < 0.01) return;
+    lastCommittedScaleRef.current = s;
+    if (viewportScaleRafRef.current != null) return;
+    viewportScaleRafRef.current = requestAnimationFrame(() => {
+      viewportScaleRafRef.current = null;
+      setViewportScale(lastCommittedScaleRef.current);
+    });
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (viewportScaleRafRef.current != null) cancelAnimationFrame(viewportScaleRafRef.current);
+    },
+    []
+  );
+
+  const annPastRef = useRef<AnnotationShape[][]>([]);
+  const annFutureRef = useRef<AnnotationShape[][]>([]);
+  const MAX_ANN_HISTORY = 24;
+
+  const [activeTool, setActiveTool] = useState<DrawTool>('pen');
   const [annotationColor, setAnnotationColor] = useState(annotationColors[0]);
   const [annotationOpacity, setAnnotationOpacity] = useState(80);
   const [annotations, setAnnotations] = useState<AnnotationShape[]>([]);
+
+  const [historyBump, setHistoryBump] = useState(0);
+  const bumpHistoryUi = () => setHistoryBump((b) => b + 1);
+
+  const patchAnnotations = useCallback((fn: (prev: AnnotationShape[]) => AnnotationShape[]) => {
+    setAnnotations((prev) => {
+      annPastRef.current.push([...prev]);
+      if (annPastRef.current.length > MAX_ANN_HISTORY) annPastRef.current.shift();
+      annFutureRef.current = [];
+      return fn(prev);
+    });
+    queueMicrotask(() => bumpHistoryUi());
+  }, []);
+
+  const undoAnnotations = useCallback(() => {
+    setAnnotations((present) => {
+      const past = annPastRef.current.pop();
+      if (!past) return present;
+      annFutureRef.current.push([...present]);
+      return past;
+    });
+    queueMicrotask(() => bumpHistoryUi());
+  }, []);
+
+  const redoAnnotations = useCallback(() => {
+    setAnnotations((present) => {
+      const future = annFutureRef.current.pop();
+      if (!future) return present;
+      annPastRef.current.push([...present]);
+      if (annPastRef.current.length > MAX_ANN_HISTORY) annPastRef.current.shift();
+      return future;
+    });
+    queueMicrotask(() => bumpHistoryUi());
+  }, []);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number } | null>(null);
@@ -255,7 +481,10 @@ export default function AnalysisStudio() {
       setParsedData(null);
       setCurrentFrame(0);
       setIsCinePlaying(false);
+      setViewportScale(1);
       setAnnotations([]);
+      annPastRef.current = [];
+      annFutureRef.current = [];
       return;
     }
     let cancelled = false;
@@ -279,6 +508,9 @@ export default function AnalysisStudio() {
           setMetadata(meta);
           setCurrentFrame(0);
           setIsCinePlaying(false);
+          setAnnotations([]);
+          annPastRef.current = [];
+          annFutureRef.current = [];
         }
       } catch (e) {
         if (!cancelled) {
@@ -301,11 +533,19 @@ export default function AnalysisStudio() {
 
   useEffect(() => {
     if (!parsedData || parsedData.numberOfFrames <= 1 || !isCinePlaying) return;
+    const nf = parsedData.numberOfFrames;
     const intervalId = window.setInterval(() => {
-      setCurrentFrame((prev) => (prev + 1) % parsedData.numberOfFrames);
+      setCurrentFrame((prev) => {
+        if (cineLoop) return (prev + 1) % nf;
+        if (prev + 1 >= nf) {
+          queueMicrotask(() => setIsCinePlaying(false));
+          return nf - 1;
+        }
+        return prev + 1;
+      });
     }, 120);
     return () => window.clearInterval(intervalId);
-  }, [parsedData, isCinePlaying]);
+  }, [parsedData, isCinePlaying, cineLoop]);
 
   const drawAnnotationsOnOverlay = useCallback(() => {
     const canvas = canvasRef.current;
@@ -316,7 +556,10 @@ export default function AnalysisStudio() {
     const ctx = overlay.getContext('2d')!;
     ctx.clearRect(0, 0, overlay.width, overlay.height);
     annotations.forEach((a) => {
+      if (a.visible === false) return;
+      if (a.frameIndex !== currentFrame) return;
       ctx.strokeStyle = a.color;
+      ctx.fillStyle = a.color;
       ctx.globalAlpha = a.opacity / 100;
       ctx.lineWidth = 2;
       if (a.type === 'rect' && a.w != null && a.h != null) {
@@ -327,15 +570,28 @@ export default function AnalysisStudio() {
         ctx.beginPath();
         ctx.ellipse(a.x + a.w / 2, a.y + a.h / 2, rx, ry, 0, 0, Math.PI * 2);
         ctx.stroke();
-      } else if (a.type === 'text' && a.text) {
+      } else if ((a.type === 'text' || a.type === 'note') && a.text) {
         ctx.font = '16px system-ui';
-        ctx.fillStyle = a.color;
         ctx.fillText(a.text, a.x, a.y);
       } else if (a.type === 'path' && a.points && a.points.length >= 2) {
         ctx.beginPath();
         ctx.moveTo(a.points[0].x, a.points[0].y);
         for (let i = 1; i < a.points.length; i++) ctx.lineTo(a.points[i].x, a.points[i].y);
         ctx.stroke();
+      } else if (
+        (a.type === 'arrow' || a.type === 'measurement') &&
+        a.w != null &&
+        a.h != null
+      ) {
+        const x2 = a.x + a.w;
+        const y2 = a.y + a.h;
+        drawArrowLine(ctx, a.x, a.y, x2, y2, a.type === 'arrow');
+        if (a.type === 'measurement' && a.text) {
+          ctx.font = '13px system-ui';
+          const mx = (a.x + x2) / 2;
+          const my = (a.y + y2) / 2 - 6;
+          ctx.fillText(a.text, mx, my);
+        }
       }
     });
     ctx.globalAlpha = 1;
@@ -351,23 +607,41 @@ export default function AnalysisStudio() {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
-    if (isDrawing && drawStart && drawCurrent && (activeTool === 'rect' || activeTool === 'circle')) {
-      const x = Math.min(drawStart.x, drawCurrent.x);
-      const y = Math.min(drawStart.y, drawCurrent.y);
-      const w = Math.abs(drawCurrent.x - drawStart.x);
-      const h = Math.abs(drawCurrent.y - drawStart.y);
-      ctx.strokeStyle = annotationColor;
-      ctx.globalAlpha = annotationOpacity / 100;
-      ctx.lineWidth = 2;
-      if (activeTool === 'rect') ctx.strokeRect(x, y, w, h);
-      else {
-        ctx.beginPath();
-        ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-        ctx.stroke();
+    if (isDrawing && drawStart && drawCurrent) {
+      if (activeTool === 'rect' || activeTool === 'circle') {
+        const x = Math.min(drawStart.x, drawCurrent.x);
+        const y = Math.min(drawStart.y, drawCurrent.y);
+        const w = Math.abs(drawCurrent.x - drawStart.x);
+        const h = Math.abs(drawCurrent.y - drawStart.y);
+        ctx.strokeStyle = annotationColor;
+        ctx.globalAlpha = annotationOpacity / 100;
+        ctx.lineWidth = 2;
+        if (activeTool === 'rect') ctx.strokeRect(x, y, w, h);
+        else {
+          ctx.beginPath();
+          ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      } else if (activeTool === 'arrow' || activeTool === 'measurement') {
+        ctx.strokeStyle = annotationColor;
+        ctx.globalAlpha = annotationOpacity / 100;
+        ctx.lineWidth = 2;
+        drawArrowLine(ctx, drawStart.x, drawStart.y, drawCurrent.x, drawCurrent.y, activeTool === 'arrow');
+        ctx.globalAlpha = 1;
       }
-      ctx.globalAlpha = 1;
     }
-  }, [annotations, isDrawing, drawStart, drawCurrent, drawingPath, activeTool, annotationColor, annotationOpacity]);
+  }, [
+    annotations,
+    currentFrame,
+    isDrawing,
+    drawStart,
+    drawCurrent,
+    drawingPath,
+    activeTool,
+    annotationColor,
+    annotationOpacity,
+  ]);
 
   useEffect(() => {
     drawAnnotationsOnOverlay();
@@ -389,19 +663,19 @@ export default function AnalysisStudio() {
     const { x, y } = getOverlayCoords(e);
     if (activeTool === 'eraser') {
       const contains = (a: AnnotationShape, px: number, py: number) => {
-        if (a.type === 'text') return Math.abs(a.x - px) < 30 && Math.abs(a.y - py) < 15;
+        if (a.frameIndex !== currentFrame || a.visible === false) return false;
+        if (a.type === 'text' || a.type === 'note')
+          return Math.abs(a.x - px) < Math.max(24, (a.text?.length ?? 0) * 6) && Math.abs(a.y - py) < 18;
+        if (a.type === 'arrow' || a.type === 'measurement') {
+          if (a.w == null || a.h == null) return false;
+          return distPointToSegment(px, py, a.x, a.y, a.x + a.w, a.y + a.h) <= 12;
+        }
         if (a.type === 'path' && a.points && a.points.length >= 2) {
           const threshold = 10;
           for (let i = 0; i < a.points.length - 1; i++) {
             const p1 = a.points[i];
             const p2 = a.points[i + 1];
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
-            const len = Math.hypot(dx, dy) || 1;
-            const t = Math.max(0, Math.min(1, ((px - p1.x) * dx + (py - p1.y) * dy) / (len * len)));
-            const projX = p1.x + t * dx;
-            const projY = p1.y + t * dy;
-            if (Math.hypot(px - projX, py - projY) <= threshold) return true;
+            if (distPointToSegment(px, py, p1.x, p1.y, p2.x, p2.y) <= threshold) return true;
           }
           return false;
         }
@@ -409,13 +683,13 @@ export default function AnalysisStudio() {
         if (a.type === 'rect') return px >= a.x && px <= a.x + a.w && py >= a.y && py <= a.y + a.h;
         const cx = a.x + a.w / 2;
         const cy = a.y + a.h / 2;
-        const rx = Math.max(a.w / 2, 1);
-        const ry = Math.max(a.h / 2, 1);
+        const rx = Math.max(Math.abs(a.w) / 2, 1);
+        const ry = Math.max(Math.abs(a.h) / 2, 1);
         return ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1;
       };
       for (let i = annotations.length - 1; i >= 0; i--) {
         if (contains(annotations[i], x, y)) {
-          setAnnotations((prev) => prev.filter((_, j) => j !== i));
+          patchAnnotations((prev) => prev.filter((_, j) => j !== i));
           break;
         }
       }
@@ -426,16 +700,48 @@ export default function AnalysisStudio() {
       setDrawingPath([{ x, y }]);
       return;
     }
-    if (activeTool === 'rect' || activeTool === 'circle') {
+    if (activeTool === 'rect' || activeTool === 'circle' || activeTool === 'arrow' || activeTool === 'measurement') {
       setIsDrawing(true);
       setDrawStart({ x, y });
       setDrawCurrent({ x, y });
-    } else if (activeTool === 'text') {
+      return;
+    }
+    if (activeTool === 'text') {
       const t = window.prompt('Text:');
       if (t) {
-        setAnnotations((prev) => [
+        patchAnnotations((prev) => [
           ...prev,
-          { id: String(Date.now()), type: 'text', color: annotationColor, opacity: annotationOpacity, x, y, text: t },
+          {
+            id: String(Date.now()),
+            type: 'text',
+            color: annotationColor,
+            opacity: annotationOpacity,
+            x,
+            y,
+            text: t,
+            frameIndex: currentFrame,
+            visible: true,
+          },
+        ]);
+      }
+      return;
+    }
+    if (activeTool === 'note') {
+      const t = window.prompt('Note', 'Finding: ');
+      if (t) {
+        patchAnnotations((prev) => [
+          ...prev,
+          {
+            id: String(Date.now()),
+            type: 'note',
+            color: annotationColor,
+            opacity: annotationOpacity,
+            x,
+            y,
+            text: t,
+            frameIndex: currentFrame,
+            visible: true,
+          },
         ]);
       }
     }
@@ -453,7 +759,7 @@ export default function AnalysisStudio() {
 
   const handleOverlayMouseUp = () => {
     if (activeTool === 'pen' && drawingPath && drawingPath.length >= 2) {
-      setAnnotations((prev) => [
+      patchAnnotations((prev) => [
         ...prev,
         {
           id: String(Date.now()),
@@ -463,6 +769,8 @@ export default function AnalysisStudio() {
           x: drawingPath[0].x,
           y: drawingPath[0].y,
           points: [...drawingPath],
+          frameIndex: currentFrame,
+          visible: true,
         },
       ]);
       setDrawingPath(null);
@@ -472,12 +780,42 @@ export default function AnalysisStudio() {
     if (!isDrawing || !drawStart || !drawCurrent) return;
     const { x: x0, y: y0 } = drawStart;
     const { x: x1, y: y1 } = drawCurrent;
+    if (activeTool === 'arrow' || activeTool === 'measurement') {
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      if (Math.hypot(dx, dy) > 4) {
+        const label =
+          activeTool === 'measurement'
+            ? measurementLabelMm(dx, dy, metadata)
+            : undefined;
+        patchAnnotations((prev) => [
+          ...prev,
+          {
+            id: String(Date.now()),
+            type: activeTool,
+            color: annotationColor,
+            opacity: annotationOpacity,
+            x: x0,
+            y: y0,
+            w: dx,
+            h: dy,
+            text: label,
+            frameIndex: currentFrame,
+            visible: true,
+          },
+        ]);
+      }
+      setIsDrawing(false);
+      setDrawStart(null);
+      setDrawCurrent(null);
+      return;
+    }
     const x = Math.min(x0, x1);
     const y = Math.min(y0, y1);
     const w = Math.abs(x1 - x0);
     const h = Math.abs(y1 - y0);
     if (w > 2 && h > 2) {
-      setAnnotations((prev) => [
+      patchAnnotations((prev) => [
         ...prev,
         {
           id: String(Date.now()),
@@ -488,6 +826,8 @@ export default function AnalysisStudio() {
           y,
           w,
           h,
+          frameIndex: currentFrame,
+          visible: true,
         },
       ]);
     }
@@ -498,7 +838,7 @@ export default function AnalysisStudio() {
 
   const handleOverlayMouseLeave = () => {
     if (activeTool === 'pen' && drawingPath && drawingPath.length >= 2) {
-      setAnnotations((prev) => [
+      patchAnnotations((prev) => [
         ...prev,
         {
           id: String(Date.now()),
@@ -508,6 +848,8 @@ export default function AnalysisStudio() {
           x: drawingPath[0].x,
           y: drawingPath[0].y,
           points: [...drawingPath],
+          frameIndex: currentFrame,
+          visible: true,
         },
       ]);
       setDrawingPath(null);
@@ -547,6 +889,31 @@ export default function AnalysisStudio() {
       a.remove();
       URL.revokeObjectURL(url);
     }, 'image/png');
+  };
+
+  const cornerLabels = useMemo(() => orientationCornerLabels(metadata), [metadata]);
+  const mmPerPx = useMemo(() => mmPerCanvasPixel(metadata), [metadata]);
+  const rulerBarPx = mmPerPx && mmPerPx > 0 ? 50 / mmPerPx : 0;
+
+  const annotationTypeLabel = (a: AnnotationShape, idx: number) => {
+    switch (a.type) {
+      case 'text':
+        return `Text · ${(a.text ?? '').slice(0, 28)}`;
+      case 'note':
+        return `Note · ${(a.text ?? '').slice(0, 28)}`;
+      case 'path':
+        return `Freehand ${idx + 1}`;
+      case 'arrow':
+        return `Arrow ${idx + 1}`;
+      case 'measurement':
+        return `Measure · ${a.text ?? '—'}`;
+      case 'circle':
+        return `Circle ${idx + 1}`;
+      case 'rect':
+        return `Rectangle ${idx + 1}`;
+      default:
+        return `Layer ${idx + 1}`;
+    }
   };
 
   return (
@@ -613,10 +980,20 @@ export default function AnalysisStudio() {
                               type="button"
                               className="analysis-cine-btn"
                               onClick={() => setIsCinePlaying((v) => !v)}
-                              title={isCinePlaying ? 'Pause cine playback' : 'Play cine playback'}
-                              aria-label={isCinePlaying ? 'Pause cine playback' : 'Play cine playback'}
+                              title={isCinePlaying ? 'Pause cine' : 'Play cine'}
+                              aria-label={isCinePlaying ? 'Pause cine' : 'Play cine'}
                             >
                               {isCinePlaying ? <Pause size={16} /> : <Play size={16} />}
+                            </button>
+                            <button
+                              type="button"
+                              className={`analysis-cine-btn ${cineLoop ? 'analysis-cine-btn--active' : ''}`}
+                              onClick={() => setCineLoop((v) => !v)}
+                              title={cineLoop ? 'Loop: on' : 'Loop: stop at last frame'}
+                              aria-label="Toggle cine loop"
+                              aria-pressed={cineLoop}
+                            >
+                              <Repeat size={16} />
                             </button>
                             <input
                               type="range"
@@ -635,7 +1012,20 @@ export default function AnalysisStudio() {
                           </div>
                         </div>
                       )}
-                      <div className="analysis-zoom-wrapper">
+                      <div className="analysis-zoom-wrapper analysis-viewport-chrome">
+                        <div className="analysis-viewport-hud" aria-hidden>
+                          {parsedData && (
+                            <>
+                              {parsedData.numberOfFrames > 1 ? (
+                                <span>Frame {currentFrame + 1}/{parsedData.numberOfFrames}</span>
+                              ) : (
+                                <span>Frame 1/1</span>
+                              )}
+                              <span className="analysis-viewport-hud-sep">·</span>
+                              <span>{Math.round(viewportScale * 100)}%</span>
+                            </>
+                          )}
+                        </div>
                         <TransformWrapper
                           initialScale={1}
                           minScale={0.25}
@@ -646,6 +1036,7 @@ export default function AnalysisStudio() {
                           doubleClick={{ mode: 'reset' }}
                           wheel={{ step: 0.15 }}
                           pinch={{ step: 5 }}
+                          onTransformed={onViewportTransformed}
                         >
                           {({ zoomIn, zoomOut, resetTransform }) => (
                             <>
@@ -667,6 +1058,12 @@ export default function AnalysisStudio() {
                                 contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                               >
                                 <div className="analysis-canvas-container">
+                                  <div className="analysis-orientation-markers" aria-hidden>
+                                    <span className="analysis-ori analysis-ori--tl">{cornerLabels.tl}</span>
+                                    <span className="analysis-ori analysis-ori--tr">{cornerLabels.tr}</span>
+                                    <span className="analysis-ori analysis-ori--bl">{cornerLabels.bl}</span>
+                                    <span className="analysis-ori analysis-ori--br">{cornerLabels.br}</span>
+                                  </div>
                                   <canvas
                                     ref={canvasRef}
                                     className="analysis-dicom-canvas"
@@ -681,6 +1078,12 @@ export default function AnalysisStudio() {
                                     onMouseLeave={handleOverlayMouseLeave}
                                     style={{ cursor: activeTool === 'eraser' ? 'cell' : 'crosshair' }}
                                   />
+                                  {rulerBarPx > 0 && (
+                                    <div className="analysis-mm-ruler" title="50 mm (from Pixel Spacing)">
+                                      <div className="analysis-mm-ruler-bar" style={{ width: `${rulerBarPx}px` }} />
+                                      <span className="analysis-mm-ruler-label">50 mm</span>
+                                    </div>
+                                  )}
                                 </div>
                               </TransformComponent>
                             </>
@@ -688,65 +1091,99 @@ export default function AnalysisStudio() {
                         </TransformWrapper>
                       </div>
                     </div>
-                    <div className="analysis-metadata">
-                      <div className="analysis-metadata-header">
-                        <Scan size={20} className="analysis-metadata-header-icon" />
-                        <h4>Patient & Study</h4>
-                      </div>
-                      {metadata['Patient Name'] != null && (
-                        <div className="analysis-metadata-block analysis-metadata-patient">
-                          <div className="analysis-metadata-row analysis-metadata-patient-name">
-                            <User size={16} />
-                            <span>{metadata['Patient Name']}</span>
+                    <div className="analysis-metadata analysis-metadata--tabs">
+                      <div className="analysis-metadata-tab-panel">
+                        <div className="analysis-metadata-header">
+                          <Scan size={20} className="analysis-metadata-header-icon" />
+                          <h4>Patient & Study</h4>
+                        </div>
+                        <div className="analysis-metadata-block analysis-metadata-quick">
+                          <div className="analysis-metadata-grid">
+                            {metadata['Acquisition Time'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Acquisition time</span>
+                                <span className="analysis-metadata-value">{metadata['Acquisition Time']}</span>
+                              </div>
+                            )}
+                            {metadata['Series Description'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Series description</span>
+                                <span className="analysis-metadata-value">{metadata['Series Description']}</span>
+                              </div>
+                            )}
+                            {metadata['Pixel Spacing'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Pixel spacing (mm)</span>
+                                <span className="analysis-metadata-value">{metadata['Pixel Spacing']}</span>
+                              </div>
+                            )}
+                            {(metadata['Institution Name'] || metadata['Manufacturer']) && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Institution / device</span>
+                                <span className="analysis-metadata-value">
+                                  {[metadata['Institution Name'], metadata['Manufacturer']].filter(Boolean).join(' · ') || '—'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
-                      <div className="analysis-metadata-block">
-                        <div className="analysis-metadata-block-title">
-                          <Calendar size={14} />
-                          <span>Study</span>
+                        {metadata['Patient Name'] != null && metadata['Patient Name'] !== '—' && (
+                          <div className="analysis-metadata-block analysis-metadata-patient">
+                            <div className="analysis-metadata-row analysis-metadata-patient-name">
+                              <User size={16} />
+                              <span>{metadata['Patient Name']}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="analysis-metadata-block">
+                          <div className="analysis-metadata-block-title">
+                            <Calendar size={14} />
+                            <span>Study</span>
+                          </div>
+                          <div className="analysis-metadata-grid">
+                            {metadata['Study Date'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Date</span>
+                                <span className="analysis-metadata-value">
+                                  {formatStudyDate(metadata['Study Date'])}
+                                </span>
+                              </div>
+                            )}
+                            {metadata['Modality'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Modality</span>
+                                <span className="analysis-metadata-badge">{metadata['Modality']}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="analysis-metadata-grid">
-                          {metadata['Study Date'] != null && (
-                            <div className="analysis-metadata-item">
-                              <span className="analysis-metadata-label">Date</span>
-                              <span className="analysis-metadata-value">
-                                {formatStudyDate(metadata['Study Date'])}
-                              </span>
-                            </div>
-                          )}
-                          {metadata['Modality'] != null && (
-                            <div className="analysis-metadata-item">
-                              <span className="analysis-metadata-label">Modality</span>
-                              <span className="analysis-metadata-badge">{metadata['Modality']}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="analysis-metadata-block">
-                        <div className="analysis-metadata-block-title">
-                          <LayoutGrid size={14} />
-                          <span>Image</span>
-                        </div>
-                        <div className="analysis-metadata-grid">
-                          {metadata['Rows'] != null && metadata['Columns'] != null && (
-                            <div className="analysis-metadata-item">
-                              <span className="analysis-metadata-label">Dimensions</span>
-                              <span className="analysis-metadata-value">{metadata['Rows']} × {metadata['Columns']}</span>
-                            </div>
-                          )}
-                          {metadata['Frames'] != null && (
-                            <div className="analysis-metadata-item">
-                              <span className="analysis-metadata-label">Frames</span>
-                              <span className="analysis-metadata-value">{metadata['Frames']}</span>
-                            </div>
-                          )}
-                          {metadata['Bits Allocated'] != null && (
-                            <div className="analysis-metadata-item">
-                              <span className="analysis-metadata-label">Bit depth</span>
-                              <span className="analysis-metadata-value">{metadata['Bits Allocated']} bit</span>
-                            </div>
-                          )}
+                        <div className="analysis-metadata-block">
+                          <div className="analysis-metadata-block-title">
+                            <LayoutGrid size={14} />
+                            <span>Image</span>
+                          </div>
+                          <div className="analysis-metadata-grid">
+                            {metadata['Rows'] != null && metadata['Columns'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Dimensions</span>
+                                <span className="analysis-metadata-value">
+                                  {metadata['Rows']} × {metadata['Columns']}
+                                </span>
+                              </div>
+                            )}
+                            {metadata['Frames'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Frames</span>
+                                <span className="analysis-metadata-value">{metadata['Frames']}</span>
+                              </div>
+                            )}
+                            {metadata['Bits Allocated'] != null && (
+                              <div className="analysis-metadata-item">
+                                <span className="analysis-metadata-label">Bit depth</span>
+                                <span className="analysis-metadata-value">{metadata['Bits Allocated']} bit</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -804,18 +1241,56 @@ export default function AnalysisStudio() {
                 <PenTool size={20} />
                 <span>Annotation</span>
               </div>
+              <div className="analysis-undo-row" data-history-bump={historyBump}>
+                <button
+                  type="button"
+                  className="btn btn-ghost analysis-undo-btn"
+                  onClick={undoAnnotations}
+                  disabled={annPastRef.current.length === 0}
+                  title="Undo"
+                >
+                  <Undo2 size={16} />
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost analysis-undo-btn"
+                  onClick={redoAnnotations}
+                  disabled={annFutureRef.current.length === 0}
+                  title="Redo"
+                >
+                  <Redo2 size={16} />
+                  Redo
+                </button>
+              </div>
               <div className="annotation-tools">
                 {annotationTools.map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     className={`annotation-tool ${activeTool === t.id ? 'annotation-tool-active' : ''}`}
-                    onClick={() => setActiveTool(t.id as typeof activeTool)}
+                    onClick={() => setActiveTool(t.id)}
                     title={t.label}
                   >
                     <t.icon size={20} />
                   </button>
                 ))}
+              </div>
+              <div className="annotation-templates-block">
+                <span className="annotation-label">Templates</span>
+                <div className="annotation-tools annotation-tools--templates">
+                  {templateTools.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`annotation-tool ${activeTool === t.id ? 'annotation-tool-active' : ''}`}
+                      onClick={() => setActiveTool(t.id)}
+                      title={t.label}
+                    >
+                      <t.icon size={20} />
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="annotation-colors">
                 <span className="annotation-label">Color</span>
@@ -845,7 +1320,7 @@ export default function AnalysisStudio() {
               </div>
               <div className="analysis-annotations-list">
                 <div className="analysis-annotations-list-header">
-                  <h4>Annotations</h4>
+                  <h4>Layers</h4>
                   <div className="analysis-annotation-actions">
                     <button
                       type="button"
@@ -854,13 +1329,13 @@ export default function AnalysisStudio() {
                       title="Save annotated image"
                     >
                       <Download size={16} />
-                      Save image
+                      Save
                     </button>
                     <button
                       type="button"
                       className="btn analysis-clear-annotations"
                       onClick={() => {
-                        setAnnotations([]);
+                        patchAnnotations(() => []);
                         setDrawingPath(null);
                         setIsDrawing(false);
                         setDrawStart(null);
@@ -877,10 +1352,69 @@ export default function AnalysisStudio() {
                 {annotations.length === 0 ? (
                   <p className="annotation-list-empty">No annotations yet. Draw on the scan.</p>
                 ) : (
-                  <ul className="annotation-list-ul">
+                  <ul className="annotation-layer-list">
                     {annotations.map((a, i) => (
-                      <li key={a.id} className="annotation-list-item">
-                        {a.type === 'text' ? `Text: ${a.text}` : a.type === 'path' ? `Freehand ${i + 1}` : `${a.type === 'circle' ? 'Circle' : 'Rectangle'} ${i + 1}`}
+                      <li key={a.id} className="annotation-layer-item">
+                        <button
+                          type="button"
+                          className="annotation-layer-visibility"
+                          onClick={() =>
+                            patchAnnotations((prev) =>
+                              prev.map((x) =>
+                                x.id === a.id ? { ...x, visible: !(x.visible !== false) } : x
+                              )
+                            )
+                          }
+                          title={a.visible === false ? 'Show' : 'Hide'}
+                        >
+                          {a.visible === false ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                        <div className="annotation-layer-body">
+                          <span className="annotation-layer-title">{annotationTypeLabel(a, i)}</span>
+                          <span className="annotation-layer-meta">
+                            Frame {a.frameIndex + 1}
+                            {parsedData.numberOfFrames > 1 && a.frameIndex !== currentFrame && (
+                              <button
+                                type="button"
+                                className="annotation-layer-jump"
+                                onClick={() => {
+                                  setCurrentFrame(a.frameIndex);
+                                  setIsCinePlaying(false);
+                                }}
+                                title="Jump to annotated frame"
+                              >
+                                <MapPin size={12} />
+                                Jump
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                        <div className="annotation-layer-actions">
+                          {(a.type === 'text' || a.type === 'note') && (
+                            <button
+                              type="button"
+                              className="annotation-layer-iconbtn"
+                              title="Edit text"
+                              onClick={() => {
+                                const next = window.prompt('Edit', a.text ?? '');
+                                if (next != null)
+                                  patchAnnotations((prev) =>
+                                    prev.map((x) => (x.id === a.id ? { ...x, text: next } : x))
+                                  );
+                              }}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="annotation-layer-iconbtn annotation-layer-iconbtn--danger"
+                            title="Delete"
+                            onClick={() => patchAnnotations((prev) => prev.filter((x) => x.id !== a.id))}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>

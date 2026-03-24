@@ -46,7 +46,7 @@ const PAGE_SIZE = 10;
 
 function formatDate(value: string | undefined): string {
   if (!value) return '—';
-  const d = value instanceof Date ? value : new Date(value);
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(undefined, { dateStyle: 'medium' });
 }
