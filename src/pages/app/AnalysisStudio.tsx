@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Play, Pause, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2, User, Calendar, Scan, LayoutGrid } from 'lucide-react';
+import { Play, Pause, Download, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2, User, Calendar, Scan, LayoutGrid } from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import './AnalysisStudio.css';
 import './Annotation.css';
@@ -517,6 +517,38 @@ export default function AnalysisStudio() {
     setDrawCurrent(null);
   };
 
+  const handleSaveAnnotatedImage = () => {
+    const baseCanvas = canvasRef.current;
+    const annotationsCanvas = overlayRef.current;
+    if (!baseCanvas || !annotationsCanvas) return;
+
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = baseCanvas.width;
+    exportCanvas.height = baseCanvas.height;
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(baseCanvas, 0, 0);
+    ctx.drawImage(annotationsCanvas, 0, 0);
+
+    const scanName = scans.find((s) => s.id === selectedId)?.originalName ?? 'dicom';
+    const safeName = scanName.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
+    const frameSuffix = parsedData && parsedData.numberOfFrames > 1 ? `_frame-${currentFrame + 1}` : '';
+    const fileName = `${safeName}${frameSuffix}_annotated.png`;
+
+    exportCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  };
+
   return (
     <div className="analysis-page">
       <div className="analysis-layout">
@@ -814,22 +846,33 @@ export default function AnalysisStudio() {
               <div className="analysis-annotations-list">
                 <div className="analysis-annotations-list-header">
                   <h4>Annotations</h4>
-                  <button
-                    type="button"
-                    className="btn analysis-clear-annotations"
-                    onClick={() => {
-                      setAnnotations([]);
-                      setDrawingPath(null);
-                      setIsDrawing(false);
-                      setDrawStart(null);
-                      setDrawCurrent(null);
-                    }}
-                    disabled={annotations.length === 0}
-                    title="Clear all annotations"
-                  >
-                    <Trash2 size={16} />
-                    Clear all
-                  </button>
+                  <div className="analysis-annotation-actions">
+                    <button
+                      type="button"
+                      className="btn analysis-save-annotations"
+                      onClick={handleSaveAnnotatedImage}
+                      title="Save annotated image"
+                    >
+                      <Download size={16} />
+                      Save image
+                    </button>
+                    <button
+                      type="button"
+                      className="btn analysis-clear-annotations"
+                      onClick={() => {
+                        setAnnotations([]);
+                        setDrawingPath(null);
+                        setIsDrawing(false);
+                        setDrawStart(null);
+                        setDrawCurrent(null);
+                      }}
+                      disabled={annotations.length === 0}
+                      title="Clear all annotations"
+                    >
+                      <Trash2 size={16} />
+                      Clear all
+                    </button>
+                  </div>
                 </div>
                 {annotations.length === 0 ? (
                   <p className="annotation-list-empty">No annotations yet. Draw on the scan.</p>

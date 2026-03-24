@@ -285,6 +285,12 @@
   margin-bottom: 0.5rem;
 }
 
+.analysis-annotation-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .analysis-annotations-list-header h4 {
   margin: 0;
 }
@@ -301,6 +307,26 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.analysis-save-annotations {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  font-size: var(--text-xs);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.analysis-save-annotations:hover {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border-color: var(--color-border-strong);
 }
 
 .analysis-clear-annotations:hover:not(:disabled) {
