@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Play, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2, User, Calendar, Scan, LayoutGrid } from 'lucide-react';
+import { Play, Pause, Loader2, Layers, Sliders, FileImage, PenTool, Square, Circle, Type, Eraser, ZoomIn, ZoomOut, RotateCcw, Trash2, User, Calendar, Scan, LayoutGrid } from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import './AnalysisStudio.css';
 import './Annotation.css';
@@ -211,6 +211,7 @@ export default function AnalysisStudio() {
   const [parsedData, setParsedData] = useState<{ arrayBuffer: ArrayBuffer; metadata: Record<string, string>; numberOfFrames: number } | null>(null);
   const [running, setRunning] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [isCinePlaying, setIsCinePlaying] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
 
@@ -253,6 +254,7 @@ export default function AnalysisStudio() {
       setMetadata({});
       setParsedData(null);
       setCurrentFrame(0);
+      setIsCinePlaying(false);
       setAnnotations([]);
       return;
     }
@@ -276,6 +278,7 @@ export default function AnalysisStudio() {
           setParsedData({ arrayBuffer: buf, metadata: meta, numberOfFrames: nFrames });
           setMetadata(meta);
           setCurrentFrame(0);
+          setIsCinePlaying(false);
         }
       } catch (e) {
         if (!cancelled) {
@@ -295,6 +298,14 @@ export default function AnalysisStudio() {
     const dataSet = dicomParser.parseDicom(new Uint8Array(parsedData.arrayBuffer));
     renderDicomToCanvas(dataSet, canvasRef.current, currentFrame);
   }, [parsedData, currentFrame]);
+
+  useEffect(() => {
+    if (!parsedData || parsedData.numberOfFrames <= 1 || !isCinePlaying) return;
+    const intervalId = window.setInterval(() => {
+      setCurrentFrame((prev) => (prev + 1) % parsedData.numberOfFrames);
+    }, 120);
+    return () => window.clearInterval(intervalId);
+  }, [parsedData, isCinePlaying]);
 
   const drawAnnotationsOnOverlay = useCallback(() => {
     const canvas = canvasRef.current;
@@ -566,12 +577,24 @@ export default function AnalysisStudio() {
                         <div className="analysis-frame-controls">
                           <label className="label">Frame</label>
                           <div className="analysis-frame-slider-wrap">
+                            <button
+                              type="button"
+                              className="analysis-cine-btn"
+                              onClick={() => setIsCinePlaying((v) => !v)}
+                              title={isCinePlaying ? 'Pause cine playback' : 'Play cine playback'}
+                              aria-label={isCinePlaying ? 'Pause cine playback' : 'Play cine playback'}
+                            >
+                              {isCinePlaying ? <Pause size={16} /> : <Play size={16} />}
+                            </button>
                             <input
                               type="range"
                               min={0}
                               max={Math.max(0, parsedData.numberOfFrames - 1)}
                               value={currentFrame}
-                              onChange={(e) => setCurrentFrame(Number(e.target.value))}
+                              onChange={(e) => {
+                                setCurrentFrame(Number(e.target.value));
+                                if (isCinePlaying) setIsCinePlaying(false);
+                              }}
                               className="analysis-slider"
                             />
                             <span className="analysis-frame-label">
