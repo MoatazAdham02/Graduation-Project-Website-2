@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FlaskConical, ArrowRight } from 'lucide-react';
+import AuthHero from '../components/AuthHero';
 import './Onboarding.css';
 
 const steps = [
@@ -31,6 +32,8 @@ export default function Onboarding() {
 
   return (
     <div className="onboarding-page">
+      <AuthHero />
+      <div className="onboarding-pane">
       <div className="onboarding-progress">
         {steps.map((s, i) => (
           <span
@@ -70,6 +73,7 @@ export default function Onboarding() {
       <button type="button" className="onboarding-skip" onClick={handleSkip}>
         Skip for now
       </button>
+      </div>
     </div>
   );
 }

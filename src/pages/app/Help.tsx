@@ -96,6 +96,7 @@ export default function Help() {
         ))}
       </motion.section>
 
+      <div className="help-footer-grid">
       <motion.section
         className="card help-faq"
         initial={{ opacity: 0, y: 12 }}
@@ -135,6 +136,7 @@ export default function Help() {
           <Link to="/app/status">View system status</Link>
         </p>
       </motion.section>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,10 @@
 .compare-page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .compare-layout {
@@ -9,7 +12,8 @@
   grid-template-columns: 1fr auto 1fr;
   gap: 0;
   align-items: stretch;
-  min-height: 420px;
+  flex: 1;
+  min-height: min(72vh, 820px);
 }
 
 .compare-panel {

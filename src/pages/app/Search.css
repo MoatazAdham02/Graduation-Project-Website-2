@@ -1,5 +1,8 @@
 .search-page {
-  max-width: 640px;
+  width: 100%;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .search-hero {
@@ -70,9 +73,9 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.65rem;
 }
 
 .search-result-card {

@@ -1,21 +1,61 @@
 .not-found-page {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 480px);
+  align-items: stretch;
+  padding: 0;
   background: var(--color-bg);
 }
 
+.not-found-visual {
+  position: relative;
+  min-height: 220px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-bg)) 0%,
+    var(--color-surface) 50%,
+    color-mix(in srgb, var(--color-accent) 14%, var(--color-bg)) 100%
+  );
+  overflow: hidden;
+}
+
+.not-found-visual-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  opacity: 0.5;
+  width: min(70vw, 420px);
+  height: min(70vw, 420px);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.not-found-visual-ring--2 {
+  width: min(50vw, 280px);
+  height: min(50vw, 280px);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  opacity: 0.65;
+}
+
 .not-found-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  max-width: 420px;
+  padding: 2.5rem 2rem;
+  max-width: none;
+  width: 100%;
+  border-radius: 0;
+  border-left: 1px solid var(--color-border);
+  box-shadow: none;
 }
 
 .not-found-icon {
-  color: var(--color-text-muted);
-  opacity: 0.7;
-  margin-bottom: 1.5rem;
+  color: var(--color-primary);
+  opacity: 0.85;
+  margin-bottom: 1.25rem;
 }
 
 .not-found-title {
@@ -30,6 +70,7 @@
   color: var(--color-text-muted);
   margin: 0 0 1.5rem;
   line-height: 1.5;
+  max-width: 28rem;
 }
 
 .not-found-actions {
@@ -46,4 +87,20 @@
 .not-found-actions .btn:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .not-found-page {
+    grid-template-columns: 1fr;
+  }
+
+  .not-found-visual {
+    min-height: 160px;
+  }
+
+  .not-found-card {
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    padding: 2rem 1.5rem 2.5rem;
+  }
 }

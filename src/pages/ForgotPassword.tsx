@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Stethoscope } from 'lucide-react';
+import AuthHero from '../components/AuthHero';
 import './Auth.css';
 
 export default function ForgotPassword() {
@@ -32,39 +33,49 @@ export default function ForgotPassword() {
   if (submitted) {
     return (
       <div className="auth-page">
-        <motion.div
-          className="auth-card card"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <div className="auth-brand">
-            <div className="auth-logo">
-              <Stethoscope size={32} />
-            </div>
-            <h1>Check your email</h1>
-            <p>If an account exists for {email}, we've sent instructions to reset your password.</p>
-          </div>
-          <Link to="/login" className="btn btn-primary auth-submit" style={{ display: 'block', textAlign: 'center' }}>
-            Back to sign in
+        <AuthHero />
+        <div className="auth-pane">
+          <Link to="/" className="auth-back">
+            ← Back to home
           </Link>
-          <p className="auth-switch">
-            <Link to="/signup">Create an account</Link>
-          </p>
-        </motion.div>
-        <Link to="/" className="auth-back">← Back to home</Link>
+          <motion.div
+            className="auth-card card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="auth-brand">
+              <div className="auth-logo">
+                <Stethoscope size={32} />
+              </div>
+              <h1>Check your email</h1>
+              <p>If an account exists for {email}, we've sent instructions to reset your password.</p>
+            </div>
+            <Link to="/login" className="btn btn-primary auth-submit" style={{ display: 'block', textAlign: 'center' }}>
+              Back to sign in
+            </Link>
+            <p className="auth-switch">
+              <Link to="/signup">Create an account</Link>
+            </p>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="auth-page">
-      <motion.div
-        className="auth-card card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
+      <AuthHero />
+      <div className="auth-pane">
+        <Link to="/" className="auth-back">
+          ← Back to home
+        </Link>
+        <motion.div
+          className="auth-card card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
         <div className="auth-brand">
           <div className="auth-logo">
             <Stethoscope size={32} />
@@ -96,9 +107,8 @@ export default function ForgotPassword() {
         <p className="auth-switch">
           Remember your password? <Link to="/login">Sign in</Link>
         </p>
-      </motion.div>
-
-      <Link to="/" className="auth-back">← Back to home</Link>
+        </motion.div>
+      </div>
     </div>
   );
 }

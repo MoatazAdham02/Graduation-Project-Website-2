@@ -1,5 +1,8 @@
 .status-page {
-  max-width: 560px;
+  width: 100%;
+  max-width: min(800px, 100%);
+  flex: 1;
+  min-height: 0;
 }
 
 .status-hero {

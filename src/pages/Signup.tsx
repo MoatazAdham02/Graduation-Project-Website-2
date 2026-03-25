@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import AuthHero from '../components/AuthHero';
 import './Auth.css';
 
 export default function Signup() {
@@ -44,12 +45,17 @@ export default function Signup() {
 
   return (
     <div className="auth-page">
-      <motion.div
-        className="auth-card card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
+      <AuthHero />
+      <div className="auth-pane">
+        <Link to="/" className="auth-back">
+          ← Back to home
+        </Link>
+        <motion.div
+          className="auth-card card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
         <div className="auth-brand">
           <div className="auth-logo">
             <Heart size={32} />
@@ -113,9 +119,8 @@ export default function Signup() {
         <p className="auth-switch">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>
-      </motion.div>
-
-      <Link to="/" className="auth-back">← Back to home</Link>
+        </motion.div>
+      </div>
     </div>
   );
 }

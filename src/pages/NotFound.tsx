@@ -6,8 +6,12 @@ import './NotFound.css';
 export default function NotFound() {
   return (
     <div className="not-found-page" id="main-content">
+      <div className="not-found-visual" aria-hidden>
+        <span className="not-found-visual-ring" />
+        <span className="not-found-visual-ring not-found-visual-ring--2" />
+      </div>
       <motion.div
-        className="not-found-card"
+        className="not-found-card card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}

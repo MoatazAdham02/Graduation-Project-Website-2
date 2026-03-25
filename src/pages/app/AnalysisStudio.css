@@ -1,13 +1,20 @@
 .analysis-page {
-  height: calc(100vh - var(--header-height) - 3rem);
-  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  /* Fill viewport below header + breadcrumbs + content padding */
+  min-height: calc(100dvh - var(--header-height) - 5.5rem);
 }
 
 .analysis-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
-  height: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .analysis-viewer {

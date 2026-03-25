@@ -9,6 +9,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 100vh;
   transition: margin-left var(--transition-base);
 }
 
@@ -18,7 +19,31 @@
 
 .app-content {
   flex: 1;
-  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  padding: 0.75rem 1.25rem 1.25rem;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% -30%, color-mix(in srgb, var(--color-primary) 11%, transparent), transparent 58%),
+    var(--color-bg);
+}
+
+[data-theme='dark'] .app-content {
+  background:
+    radial-gradient(ellipse 120% 90% at 50% -30%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 58%),
+    var(--color-bg);
+}
+
+.app-content .breadcrumbs {
+  flex-shrink: 0;
+}
+
+/* Route outlet: stretch so pages can fill the viewport (no dead vertical band) */
+.app-content > *:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 
 @media (max-width: 1024px) {

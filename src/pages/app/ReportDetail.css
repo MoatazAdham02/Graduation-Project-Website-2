@@ -1,5 +1,8 @@
 .report-detail-page {
-  max-width: 720px;
+  width: 100%;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .report-detail-card {

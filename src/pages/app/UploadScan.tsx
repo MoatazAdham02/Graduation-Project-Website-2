@@ -147,6 +147,8 @@ export default function UploadScan() {
 
   return (
     <div className="upload-scan-page">
+      <div className="upload-scan-layout">
+        <div className="upload-scan-main">
       <motion.div
         className={`upload-zone card ${dragActive ? 'upload-zone-active' : ''}`}
         onDragEnter={handleDrag}
@@ -229,6 +231,20 @@ export default function UploadScan() {
           </div>
         </motion.div>
       )}
+        </div>
+        <aside className="upload-scan-aside card" aria-label="Upload guidelines">
+          <h3 className="upload-aside-title">DICOM upload</h3>
+          <ul className="upload-tips-list">
+            <li>Accepted: <strong>.dcm</strong> and <strong>.dicom</strong> only.</li>
+            <li>Patient name, study date, and modality are taken from headers when possible.</li>
+            <li>Duplicate files are skipped automatically.</li>
+          </ul>
+          <h3 className="upload-aside-title upload-aside-title--sub">Next steps</h3>
+          <p className="upload-aside-note">
+            After upload, open <strong>Patients</strong> or <strong>Analysis Studio</strong> from the sidebar to review and analyze scans.
+          </p>
+        </aside>
+      </div>
     </div>
   );
 }

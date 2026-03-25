@@ -164,8 +164,9 @@ export default function Dashboard() {
           </motion.div>
         )))}
       </motion.div>
+      <div className="dashboard-grid">
         <motion.section
-          className="card dashboard-section"
+          className="card dashboard-section dashboard-section--main"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -239,5 +240,6 @@ export default function Dashboard() {
           </div>
         </motion.section>
       </div>
+    </div>
     );
 }

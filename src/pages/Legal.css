@@ -1,12 +1,20 @@
 .legal-page {
   min-height: 100vh;
-  padding: 4rem 0;
-  background: var(--color-bg);
+  padding: 2.5rem 1.25rem 3rem;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 50%),
+    var(--color-bg);
 }
 
 .legal-card {
-  max-width: 720px;
-  padding: 2rem 1.5rem;
+  max-width: min(960px, 100%);
+  margin: 0 auto;
+  width: 100%;
+  padding: 2.25rem 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: var(--color-bg-elevated);
 }
 
 .legal-card h1 {
@@ -54,4 +62,8 @@
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+.legal-card.container {
+  max-width: min(960px, 100%);
 }

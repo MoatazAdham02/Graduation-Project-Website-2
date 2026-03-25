@@ -1,11 +1,15 @@
 .settings-page {
-  max-width: 900px;
+  width: 100%;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
 .settings-nav {

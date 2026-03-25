@@ -1,5 +1,8 @@
 .notifications-page {
-  max-width: 640px;
+  width: 100%;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .notifications-header {
