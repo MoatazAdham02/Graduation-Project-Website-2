@@ -6,12 +6,12 @@ import EmptyState from '../../components/EmptyState';
 import './Reports.css';
 
 const allReports = [
-  { id: '1', title: 'CT Chest — John Doe', date: 'Mar 1, 2025', type: 'Radiology', status: 'Final' },
-  { id: '2', title: 'MRI Brain — Maria G.', date: 'Feb 28, 2025', type: 'Radiology', status: 'Draft' },
-  { id: '3', title: 'X-Ray Spine — Robert K.', date: 'Feb 27, 2025', type: 'Radiology', status: 'Final' },
-  { id: '4', title: 'CT Abdomen — Sarah C.', date: 'Feb 26, 2025', type: 'Radiology', status: 'Final' },
-  { id: '5', title: 'MRI Knee — James W.', date: 'Feb 25, 2025', type: 'Radiology', status: 'Draft' },
-  { id: '6', title: 'X-Ray Hand — Emily D.', date: 'Feb 24, 2025', type: 'Radiology', status: 'Final' },
+  { id: '1', patientId: 'ICC_Patient_0206', title: 'CARDIAC CT — ICC_Patient_0206', date: '20-01-2026', type: 'Cardiac CT', status: 'Final' },
+  { id: '2', patientId: 'ICC_Patient_0144', title: 'MRI Brain — Maria G.', date: 'Feb 28, 2025', type: 'Radiology', status: 'Draft' },
+  { id: '3', patientId: 'ICC_Patient_0291', title: 'X-Ray Spine — Robert K.', date: 'Feb 27, 2025', type: 'Radiology', status: 'Final' },
+  { id: '4', patientId: 'ICC_Patient_0103', title: 'CT Abdomen — Sarah C.', date: 'Feb 26, 2025', type: 'Radiology', status: 'Final' },
+  { id: '5', patientId: 'ICC_Patient_0338', title: 'MRI Knee — James W.', date: 'Feb 25, 2025', type: 'Radiology', status: 'Draft' },
+  { id: '6', patientId: 'ICC_Patient_0552', title: 'X-Ray Hand — Emily D.', date: 'Feb 24, 2025', type: 'Radiology', status: 'Final' },
 ];
 
 const PAGE_SIZE = 3;
@@ -59,6 +59,7 @@ export default function Reports() {
             </div>
             <div className="reports-card-body">
               <h3>{r.title}</h3>
+              <p className="reports-card-patient-id">{r.patientId}</p>
               <div className="reports-card-meta">
                 <span><Calendar size={14} /> {r.date}</span>
                 <span><User size={14} /> {r.type}</span>
