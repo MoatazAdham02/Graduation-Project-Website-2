@@ -69,17 +69,17 @@
   font-size: var(--text-xs);
 }
 .report-detail-status--final {
-  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  background: rgba(5, 150, 105, 0.14);
   color: var(--color-success);
 }
 .report-detail-status--draft {
-  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  background: rgba(217, 119, 6, 0.16);
   color: var(--color-warning);
 }
 
 /* --- CARDIAC CT: editorial clinical document --- */
 .report-doc--cardiac-ct {
-  --report-rail: color-mix(in srgb, var(--color-primary) 65%, var(--color-accent));
+  --report-rail: #0b9397;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.65;
@@ -152,7 +152,10 @@
   grid-column: 1 / -1;
   border-right: none;
   padding-top: 1rem;
-  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+  background: rgba(13, 148, 136, 0.06);
+}
+[data-theme='dark'] .report-cardiac-field--indication {
+  background: rgba(13, 148, 136, 0.12);
 }
 
 .report-cardiac-field--indication .report-cardiac-value--indented {
@@ -218,12 +221,15 @@
 .report-cardiac-section--index {
   margin-top: 1.5rem;
   padding: 1.35rem 1.15rem;
-  background: color-mix(in srgb, var(--color-surface) 85%, var(--color-bg-elevated));
+  background: #f3f5f8;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   /* Single enclosing border — avoid double rule with previous section */
   border-top: 1px solid var(--color-border) !important;
   padding-top: 1.35rem;
+}
+[data-theme='dark'] .report-cardiac-section--index {
+  background: #1e293b;
 }
 
 .report-cardiac-section--spaced {
@@ -273,16 +279,19 @@
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;
   max-width: none;
-  background: color-mix(in srgb, var(--color-surface) 70%, var(--color-bg-elevated));
+  background: #f4f6f9;
   border-radius: var(--radius-md);
   border-left: 3px solid var(--report-rail);
   font-weight: 500;
+}
+[data-theme='dark'] .report-cardiac-para--hanging {
+  background: #1e293b;
 }
 
 .report-cardiac-para--indented {
   padding: 0 0 0 1rem;
   margin: 0 0 0.45rem;
-  border-left: 2px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  border-left: 2px solid rgba(13, 148, 136, 0.28);
   margin-left: 0;
   max-width: 65ch;
 }
@@ -364,7 +373,10 @@
   padding-bottom: 0.5rem;
   color: var(--color-text);
   border: none;
-  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  border-bottom: 2px solid rgba(13, 148, 136, 0.42);
+}
+[data-theme='dark'] .report-cardiac-major-heading {
+  border-bottom-color: rgba(45, 212, 191, 0.35);
 }
 
 .report-cardiac-cta-block {
@@ -415,7 +427,7 @@
   height: 5px;
   border-radius: 50%;
   background: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.25);
 }
 
 /* Page 2: continuation sheet */

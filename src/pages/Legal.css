@@ -2,7 +2,7 @@
   min-height: 100vh;
   padding: 2.5rem 1.25rem 3rem;
   background:
-    radial-gradient(ellipse 100% 60% at 50% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 50%),
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(13, 148, 136, 0.09), transparent 50%),
     var(--color-bg);
 }
 

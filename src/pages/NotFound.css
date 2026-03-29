@@ -10,19 +10,23 @@
 .not-found-visual {
   position: relative;
   min-height: 220px;
+  background: linear-gradient(145deg, #e3f2f0 0%, var(--color-surface) 50%, #e2f0f5 100%);
+  overflow: hidden;
+}
+
+[data-theme='dark'] .not-found-visual {
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--color-primary) 18%, var(--color-bg)) 0%,
+    rgba(13, 148, 136, 0.2) 0%,
     var(--color-surface) 50%,
-    color-mix(in srgb, var(--color-accent) 14%, var(--color-bg)) 100%
+    rgba(8, 145, 178, 0.16) 100%
   );
-  overflow: hidden;
 }
 
 .not-found-visual-ring {
   position: absolute;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  border: 2px solid rgba(13, 148, 136, 0.35);
   opacity: 0.5;
   width: min(70vw, 420px);
   height: min(70vw, 420px);
@@ -34,7 +38,7 @@
 .not-found-visual-ring--2 {
   width: min(50vw, 280px);
   height: min(50vw, 280px);
-  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  border-color: rgba(8, 145, 178, 0.4);
   opacity: 0.65;
 }
 

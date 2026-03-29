@@ -1,7 +1,9 @@
 import { useParams, Link } from 'react-router-dom';
+import { useRef, useState, useCallback, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Download, ArrowLeft, Printer, Copy } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { downloadReportPdf } from '../../lib/downloadReportPdf';
 import './ReportDetail.css';
 
 /** Matches the ICC CARDIAC CT Word template (two-page layout). */
@@ -252,9 +254,12 @@ function reportToPlainText(r: CardiacCTReport): string {
   return lines.join('\n');
 }
 
-function CardiacCTDocument({ report }: { report: CardiacCTReport }) {
+const CardiacCTDocument = forwardRef<HTMLElement, { report: CardiacCTReport }>(function CardiacCTDocument(
+  { report },
+  ref
+) {
   return (
-    <article className="report-doc report-doc--cardiac-ct">
+    <article ref={ref} className="report-doc report-doc--cardiac-ct">
       <div className="report-cardiac-page">
         <h1 className="report-cardiac-title">{report.bannerTitle}</h1>
 
@@ -348,23 +353,39 @@ function CardiacCTDocument({ report }: { report: CardiacCTReport }) {
       </div>
     </article>
   );
-}
+});
 
 export default function ReportDetail() {
   const { id } = useParams<{ id: string }>();
   const report = id ? MOCK_CARDIAC[id] : null;
   const { addToast } = useToast();
+  const reportArticleRef = useRef<HTMLElement | null>(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const handlePrint = () => window.print();
 
-  const handleExportPdf = () => {
-    addToast('success', 'Report exported as PDF');
-  };
+  const handleExportPdf = useCallback(async () => {
+    const el = reportArticleRef.current;
+    if (!report || !el || pdfExporting) return;
+    const safeId = id ?? 'report';
+    const nameBase = `coronet-report-${safeId}-${report.patientName}`.replace(/\s+/g, '-');
+    setPdfExporting(true);
+    try {
+      await downloadReportPdf(el, `${nameBase}.pdf`);
+      addToast('success', 'PDF downloaded');
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Could not create PDF');
+    } finally {
+      setPdfExporting(false);
+    }
+  }, [report, id, pdfExporting, addToast]);
 
-  const handleCopySummary = () => {
+  const handleCopySummary = useCallback(() => {
     if (!report) return;
-    navigator.clipboard.writeText(reportToPlainText(report)).then(() => addToast('success', 'Report copied to clipboard'));
-  };
+    void navigator.clipboard.writeText(reportToPlainText(report)).then(() =>
+      addToast('success', 'Report copied to clipboard')
+    );
+  }, [report, addToast]);
 
   if (!report) {
     return (
@@ -400,14 +421,19 @@ export default function ReportDetail() {
               <Copy size={18} />
               Copy report
             </button>
-            <button type="button" className="btn btn-primary" onClick={handleExportPdf}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleExportPdf()}
+              disabled={pdfExporting}
+            >
               <Download size={18} />
-              Export PDF
+              {pdfExporting ? 'Saving…' : 'Export PDF'}
             </button>
           </div>
         </div>
 
-        <CardiacCTDocument report={report} />
+        <CardiacCTDocument ref={reportArticleRef} report={report} />
       </motion.div>
     </div>
   );

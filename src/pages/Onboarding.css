@@ -14,7 +14,7 @@
   padding: 2rem 1.5rem 2.5rem;
   position: relative;
   background:
-    radial-gradient(ellipse 80% 50% at 100% 0%, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 0%, rgba(13, 148, 136, 0.08), transparent 55%),
     var(--color-bg);
 }
 
