@@ -25,6 +25,7 @@ router.post('/register', async (req, res) => {
       email: normalizedEmail,
       password
     });
+    console.log('[auth] user saved to MongoDB:', normalizedEmail, 'id=', String(user._id));
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
     res.status(201).json({
       success: true,

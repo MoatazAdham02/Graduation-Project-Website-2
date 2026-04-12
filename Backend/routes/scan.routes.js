@@ -145,6 +145,7 @@ router.post(
         studyDate,
         modality
       });
+      console.log('[scan] saved to MongoDB:', String(scan._id), f.originalname);
       res.status(201).json({
         ok: true,
         uploaded: [{
