@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
   try {
     const scans = await Scan.find({ userId: req.user._id })
       .sort({ createdAt: -1 })
-      .select('originalName size createdAt patientName studyDate modality')
+      .select('originalName size createdAt patientName studyDate modality doctorName')
       .lean();
     res.json(scans.map((s) => ({
       id: s._id,
@@ -49,7 +49,8 @@ router.get('/', async (req, res) => {
       createdAt: s.createdAt,
       patientName: s.patientName || '',
       studyDate: s.studyDate || '',
-      modality: s.modality || ''
+      modality: s.modality || '',
+      doctorName: s.doctorName || ''
     })));
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to list scans' });
@@ -86,7 +87,8 @@ router.get('/:id', async (req, res) => {
       createdAt: scan.createdAt,
       patientName: scan.patientName || '',
       studyDate: scan.studyDate || '',
-      modality: scan.modality || ''
+      modality: scan.modality || '',
+      doctorName: scan.doctorName || ''
     });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to get scan' });
@@ -141,6 +143,7 @@ router.post(
 
       const scan = await Scan.create({
         userId: req.user._id,
+        doctorName: String(req.user.name || '').trim(),
         originalName: f.originalname,
         path: f.path,
         size: f.size,
@@ -159,7 +162,8 @@ router.post(
           createdAt: scan.createdAt,
           patientName: scan.patientName,
           studyDate: scan.studyDate,
-          modality: scan.modality
+          modality: scan.modality,
+          doctorName: scan.doctorName
         }]
       });
     } catch (err) {
