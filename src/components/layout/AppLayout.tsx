@@ -10,6 +10,7 @@ import './AppLayout.css';
 
 type LayoutContextValue = { sidebarCollapsed: boolean; setSidebarCollapsed: (v: boolean) => void };
 const LayoutContext = createContext<LayoutContextValue | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLayout() { return useContext(LayoutContext)!; }
 
 export default function AppLayout() {

@@ -18,27 +18,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
     return 'system';
   });
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() =>
-    theme === 'system' ? getSystemTheme() : theme
-  );
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => getSystemTheme());
+  const resolvedTheme: 'light' | 'dark' = theme === 'system' ? systemTheme : theme;
 
   useEffect(() => {
-    const effective = theme === 'system' ? getSystemTheme() : theme;
-    setResolvedTheme(effective);
-    document.documentElement.setAttribute('data-theme', effective);
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
     localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
+  }, [resolvedTheme, theme]);
 
   useEffect(() => {
-    if (theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      setResolvedTheme(mq.matches ? 'dark' : 'light');
-      document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
-    };
+    const handleChange = () => setSystemTheme(mq.matches ? 'dark' : 'light');
+    handleChange();
     mq.addEventListener('change', handleChange);
     return () => mq.removeEventListener('change', handleChange);
-  }, [theme]);
+  }, []);
 
   const setTheme = (t: Theme) => setThemeState(t);
 
@@ -49,6 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider');

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { AUTH_TOKEN_KEY } from '../lib/apiAuth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const TOKEN_KEY = 'coronet-token';
 
 type User = { id: string; name: string; email: string } | null;
 
@@ -18,17 +18,17 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User>(null);
-  const [token, setTokenState] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setTokenState] = useState<string | null>(() => localStorage.getItem(AUTH_TOKEN_KEY));
   const [loading, setLoading] = useState(true);
 
   const setToken = useCallback((t: string | null) => {
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (t) localStorage.setItem(AUTH_TOKEN_KEY, t);
+    else localStorage.removeItem(AUTH_TOKEN_KEY);
     setTokenState(t);
   }, []);
 
   const loadUser = useCallback(async () => {
-    const t = localStorage.getItem(TOKEN_KEY);
+    const t = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!t) {
       setUser(null);
       setLoading(false);
@@ -119,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

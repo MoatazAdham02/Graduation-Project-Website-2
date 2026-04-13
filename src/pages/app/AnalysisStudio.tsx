@@ -35,6 +35,7 @@ import {
   Repeat,
 } from 'lucide-react';
 import dicomParser from 'dicom-parser';
+import { authHeaders } from '../../lib/apiAuth';
 import './AnalysisStudio.css';
 import './Annotation.css';
 
@@ -455,7 +456,9 @@ export default function AnalysisStudio() {
     (async () => {
       setLoadingScans(true);
       try {
-        const res = await fetch(`${API_URL}/api/scan`);
+        const res = await fetch(`${API_URL}/api/scan`, {
+          headers: { ...authHeaders() },
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load scans');
         if (!cancelled) setScans(Array.isArray(data) ? data : []);
@@ -493,7 +496,9 @@ export default function AnalysisStudio() {
     setParsedData(null);
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/scan/${selectedId}/file`);
+        const res = await fetch(`${API_URL}/api/scan/${selectedId}/file`, {
+          headers: { ...authHeaders() },
+        });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || 'Failed to load file');

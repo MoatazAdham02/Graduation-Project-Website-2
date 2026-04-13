@@ -4,6 +4,7 @@ import { Upload, FileImage, X, Loader2 } from 'lucide-react';
 import dicomParser from 'dicom-parser';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { authHeaders } from '../../lib/apiAuth';
 import './UploadScan.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -117,6 +118,7 @@ export default function UploadScan() {
         form.append('modality', modality);
         const res = await fetch(`${API_URL}/api/scan/upload`, {
           method: 'POST',
+          headers: { ...authHeaders() },
           body: form,
         });
         const data = await res.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Check, Trash2 } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
@@ -7,10 +7,10 @@ import {
   markScanNotificationsRead,
   subscribeScanNotificationReadChanges,
 } from '../../lib/notificationReadState';
+import { authHeaders } from '../../lib/apiAuth';
 import './Notifications.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const TOKEN_KEY = 'coronet-token';
 
 type ScanItem = {
   id: string;
@@ -53,7 +53,7 @@ export default function Notifications() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { addToast } = useToast();
 
-  const mapScansToNotifications = (data: ScanItem[]): NotificationItem[] => {
+  const mapScansToNotifications = useCallback((data: ScanItem[]): NotificationItem[] => {
     const readIds = getReadScanNotificationIds();
     return (Array.isArray(data) ? data : []).map((scan) => {
       const id = String(scan.id);
@@ -65,14 +65,13 @@ export default function Notifications() {
         unread: !readIds.has(id),
       };
     });
-  };
+  }, []);
 
-  const fetchNotifications = async (signal?: AbortSignal) => {
+  const fetchNotifications = useCallback(async (signal?: AbortSignal) => {
     try {
-      const token = localStorage.getItem(TOKEN_KEY);
       const res = await fetch(`${API_URL}/api/scan`, {
         signal,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: { ...authHeaders() },
       });
       if (!res.ok) throw new Error('Unable to load notifications');
       const data = (await res.json()) as ScanItem[];
@@ -84,20 +83,20 @@ export default function Notifications() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [mapScansToNotifications]);
 
   useEffect(() => {
     const controller = new AbortController();
     void fetchNotifications(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       void fetchNotifications();
     }, 10000);
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [fetchNotifications]);
 
   useEffect(() => subscribeScanNotificationReadChanges(() => {
     setNotifications((prev) => {

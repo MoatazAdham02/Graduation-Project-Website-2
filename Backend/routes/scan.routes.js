@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Scan from '../models/Scan.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.join(__dirname, '../uploads/dicom');
@@ -33,10 +34,11 @@ const upload = multer({
 });
 
 const router = express.Router();
+router.use(authMiddleware);
 
 router.get('/', async (req, res) => {
   try {
-    const scans = await Scan.find()
+    const scans = await Scan.find({ userId: req.user._id })
       .sort({ createdAt: -1 })
       .select('originalName size createdAt patientName studyDate modality')
       .lean();
@@ -56,7 +58,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id/file', async (req, res) => {
   try {
-    const scan = await Scan.findById(req.params.id);
+    const scan = await Scan.findOne({ _id: req.params.id, userId: req.user._id });
     if (!scan) return res.status(404).json({ error: 'Scan not found' });
     const absolutePath = path.resolve(scan.path);
     if (!absolutePath.startsWith(path.resolve(UPLOAD_DIR))) {
@@ -74,7 +76,7 @@ router.get('/:id/file', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const scan = await Scan.findById(req.params.id).lean();
+    const scan = await Scan.findOne({ _id: req.params.id, userId: req.user._id }).lean();
     if (!scan) return res.status(404).json({ error: 'Scan not found' });
     res.json({
       id: scan._id,
@@ -93,7 +95,7 @@ router.get('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const scan = await Scan.findById(req.params.id);
+    const scan = await Scan.findOne({ _id: req.params.id, userId: req.user._id });
     if (!scan) return res.status(404).json({ error: 'Scan not found' });
     const absolutePath = path.resolve(scan.path);
     if (absolutePath.startsWith(path.resolve(UPLOAD_DIR)) && fs.existsSync(absolutePath)) {
@@ -103,7 +105,7 @@ router.delete('/:id', async (req, res) => {
         // continue to delete DB record even if file delete fails
       }
     }
-    await Scan.findByIdAndDelete(req.params.id);
+    await Scan.deleteOne({ _id: req.params.id, userId: req.user._id });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message || 'Failed to delete scan' });
@@ -124,6 +126,7 @@ router.post(
       const modality = (req.body && req.body.modality) ? String(req.body.modality).trim() : '';
 
       const existing = await Scan.findOne({
+        userId: req.user._id,
         originalName: f.originalname,
         studyDate: studyDate || ''
       }).lean();
@@ -137,6 +140,7 @@ router.post(
       }
 
       const scan = await Scan.create({
+        userId: req.user._id,
         originalName: f.originalname,
         path: f.path,
         size: f.size,

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { GitCompare, Upload, Layers, Loader2 } from 'lucide-react';
+import { authHeaders } from '../../lib/apiAuth';
 import './Compare.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -29,7 +30,11 @@ export default function Compare() {
       form.append('patientName', '');
       form.append('studyDate', '');
       form.append('modality', '');
-      const res = await fetch(`${API_URL}/api/scan/upload`, { method: 'POST', body: form });
+      const res = await fetch(`${API_URL}/api/scan/upload`, {
+        method: 'POST',
+        headers: { ...authHeaders() },
+        body: form
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setUploadError(data.error || 'Upload failed');

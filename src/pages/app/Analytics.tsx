@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity } from 'lucide-react';
 import EmptyState from '../../components/EmptyState';
+import { authHeaders } from '../../lib/apiAuth';
 import './Analytics.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const TOKEN_KEY = 'coronet-token';
 
 type ScanItem = {
   id: string;
@@ -45,10 +45,9 @@ export default function Analytics() {
 
   const fetchScans = async (signal?: AbortSignal) => {
     try {
-      const token = localStorage.getItem(TOKEN_KEY);
       const res = await fetch(`${API_URL}/api/scan`, {
         signal,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: { ...authHeaders() },
       });
       if (!res.ok) throw new Error('Unable to load analytics data');
       const data = (await res.json()) as ScanItem[];

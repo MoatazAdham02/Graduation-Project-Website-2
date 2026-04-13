@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity, Users, FileText, TrendingUp, ArrowUpRight } from 'lucide-react';
 import EmptyState from '../../components/EmptyState';
+import { authHeaders } from '../../lib/apiAuth';
 import './Dashboard.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const TOKEN_KEY = 'coronet-token';
 
 type ScanItem = {
   id: string;
@@ -68,10 +68,9 @@ export default function Dashboard() {
 
   const fetchScans = async (signal?: AbortSignal) => {
     try {
-      const token = localStorage.getItem(TOKEN_KEY);
       const res = await fetch(`${API_URL}/api/scan`, {
         signal,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: { ...authHeaders() },
       });
       if (!res.ok) {
         throw new Error('Unable to load activity stream');

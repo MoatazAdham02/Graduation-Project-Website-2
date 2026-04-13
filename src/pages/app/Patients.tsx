@@ -5,6 +5,7 @@ import { Search, User, Loader2, FileImage, Trash2 } from 'lucide-react';
 import EmptyState from '../../components/EmptyState';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useToast } from '../../contexts/ToastContext';
+import { authHeaders } from '../../lib/apiAuth';
 import './Patients.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -78,7 +79,9 @@ export default function Patients() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_URL}/api/scan`);
+        const res = await fetch(`${API_URL}/api/scan`, {
+          headers: { ...authHeaders() },
+        });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (!cancelled) setError(data.error || 'Failed to load patients');
@@ -127,7 +130,10 @@ export default function Patients() {
       onConfirm: async () => {
         try {
           for (const scan of group.scans) {
-            const res = await fetch(`${API_URL}/api/scan/${scan.id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/api/scan/${scan.id}`, {
+              method: 'DELETE',
+              headers: { ...authHeaders() },
+            });
             if (!res.ok) {
               const data = await res.json().catch(() => ({}));
               addToast('error', data.error || 'Failed to delete');

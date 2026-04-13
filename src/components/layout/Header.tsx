@@ -12,10 +12,10 @@ import {
   markScanNotificationsRead,
   subscribeScanNotificationReadChanges,
 } from '../../lib/notificationReadState';
+import { authHeaders } from '../../lib/apiAuth';
 import './Header.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const TOKEN_KEY = 'coronet-token';
 
 type ScanItem = {
   id: string;
@@ -97,10 +97,9 @@ export default function Header({ title, subtitle }: HeaderProps) {
   useEffect(() => {
     const fetchNotifications = async (signal?: AbortSignal) => {
       try {
-        const token = localStorage.getItem(TOKEN_KEY);
         const res = await fetch(`${API_URL}/api/scan`, {
           signal,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { ...authHeaders() },
         });
         if (!res.ok) return;
         const data = (await res.json()) as ScanItem[];

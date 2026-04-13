@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, User, FileText } from 'lucide-react';
@@ -19,11 +19,9 @@ const mockReports = [
 ];
 
 export default function SearchPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get('q') ?? '';
   const [query, setQuery] = useState(q);
-
-  useEffect(() => setQuery(q), [q]);
 
   const qLower = query.trim().toLowerCase();
   const patients = qLower
@@ -52,7 +50,11 @@ export default function SearchPage() {
             className="input search-input"
             placeholder="Search patients, reports..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setQuery(next);
+              setSearchParams(next.trim() ? { q: next } : {});
+            }}
             autoFocus
           />
         </div>
