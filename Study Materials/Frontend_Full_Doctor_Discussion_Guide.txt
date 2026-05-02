@@ -1,0 +1,420 @@
+================================================================================
+COROnet - FRONTEND FULL DOCTOR DISCUSSION GUIDE
+================================================================================
+
+Purpose:
+This file is a full study reference for discussing the frontend in detail with a
+doctor/supervisor. It explains architecture, decisions, flows, strengths,
+limitations, and likely technical questions.
+
+
+--------------------------------------------------------------------------------
+1) FRONTEND OVERVIEW (WHAT IT IS RESPONSIBLE FOR)
+--------------------------------------------------------------------------------
+
+The frontend is a React + TypeScript + Vite single-page application (SPA). It is
+responsible for:
+- User interface (forms, pages, navigation, dashboard, uploads, reports)
+- Session experience (login/register state in browser)
+- Calling backend APIs (auth + scan operations)
+- Showing status, loading, errors, offline states, and confirmations
+- Displaying and organizing medical workflow screens for users
+
+It is NOT responsible for:
+- Database operations
+- Password hashing/JWT issuing
+- File storage on disk
+- Server-side access control enforcement
+
+
+--------------------------------------------------------------------------------
+2) TECH STACK AND WHY EACH CHOICE MATTERS
+--------------------------------------------------------------------------------
+
+Core:
+- React 19: component-based UI and maintainability for a multi-page dashboard.
+- TypeScript: static typing for safer refactors and fewer runtime bugs.
+- Vite: fast local development and efficient production bundling.
+- React Router v7: nested routing for public routes and protected app routes.
+
+UI/Interaction:
+- Framer Motion: smooth, professional transitions and motion-based feedback.
+- Lucide React: consistent icon system.
+- CSS files per page/component + global variables in index.css.
+
+Medical/Data utilities:
+- dicom-parser: parse DICOM metadata client-side when needed.
+- react-zoom-pan-pinch: useful for zoom/pan interactions in image-oriented views.
+
+Export/report utilities:
+- html2canvas + jsPDF: allows converting UI snapshots/reports into PDFs.
+
+
+--------------------------------------------------------------------------------
+3) PROJECT FRONTEND STRUCTURE (MENTAL MAP)
+--------------------------------------------------------------------------------
+
+Main structure in src:
+- src/main.tsx
+  Entry point, mounts <App /> inside <StrictMode>.
+
+- src/App.tsx
+  App composition root:
+  ErrorBoundary -> ThemeProvider -> ToastProvider -> ConfirmProvider
+  -> AuthProvider -> BrowserRouter -> Routes
+
+- src/pages/
+  Public pages (Landing, Login, Signup, ForgotPassword, Terms, Privacy, etc.)
+
+- src/pages/app/
+  Protected application pages:
+  Dashboard, Patients, PatientDetail, UploadScan, AnalysisStudio, Reports,
+  ReportDetail, Compare, ShareCase, Analytics, Admin, Settings, Notifications,
+  Help, Search, Status.
+
+- src/components/
+  Reusable UI: ErrorBoundary, OfflineBanner, LoadingBar, SkipLink, EmptyState,
+  and layout components.
+
+- src/components/layout/
+  App layout shell: AppLayout, Sidebar, Header, Breadcrumbs, KeyboardShortcuts.
+
+- src/contexts/
+  Shared global state: AuthContext, ThemeContext, ToastContext, ConfirmContext.
+
+- src/hooks/
+  Reusable logic: usePageTitle, useFocusTrap.
+
+- src/lib/
+  Small utilities (auth header helper, PDF download helper, notification state).
+
+
+--------------------------------------------------------------------------------
+4) ROUTING SYSTEM (PUBLIC VS PROTECTED)
+--------------------------------------------------------------------------------
+
+Public routes:
+- /
+- /login
+- /signup
+- /forgot-password
+- /onboarding
+- /privacy
+- /terms
+
+Protected section:
+- /app/* is wrapped by ProtectedLayout.
+- Inside /app, AppLayout provides the dashboard shell and nested route content.
+
+Protected child routes include:
+- /app
+- /app/patients
+- /app/patients/:id
+- /app/upload
+- /app/analysis
+- /app/reports
+- /app/reports/:id
+- /app/compare
+- /app/share
+- /app/analytics
+- /app/admin
+- /app/settings
+- /app/notifications
+- /app/help
+- /app/search
+- /app/status
+
+Fallback:
+- * -> NotFound page.
+
+Doctor discussion point:
+Nested routing separates shell concerns (sidebar/header/breadcrumb) from page
+content. This reduces duplication and improves maintainability.
+
+
+--------------------------------------------------------------------------------
+5) AUTHENTICATION ON FRONTEND (REAL FLOW)
+--------------------------------------------------------------------------------
+
+Primary source:
+- AuthContext.tsx
+
+Token storage:
+- localStorage key: coronet-token
+
+State in context:
+- user
+- token
+- loading
+- login(email, password)
+- register(name, email, password)
+- logout()
+
+Startup behavior:
+1) On app load, context checks localStorage for token.
+2) If token exists, frontend requests GET /api/auth/me with Bearer token.
+3) If valid: user is restored.
+4) If invalid/expired: token removed and user cleared.
+
+Login/register behavior:
+1) Frontend sends JSON to /api/auth/login or /api/auth/register.
+2) Expects token + user in response.
+3) Saves token to localStorage and updates user state.
+
+Route guarding:
+- ProtectedLayout reads useAuth().
+- While loading: show loading state.
+- If no user: redirect to /login.
+- If user exists: render app routes.
+
+Security talking point:
+localStorage is practical for student/demo projects but vulnerable to XSS.
+Production-grade alternatives include HttpOnly cookie-based sessions.
+
+
+--------------------------------------------------------------------------------
+6) GLOBAL CONTEXTS (WHAT EACH ONE DOES)
+--------------------------------------------------------------------------------
+
+AuthContext:
+- User session and auth actions.
+
+ThemeContext:
+- Light/dark mode state and toggling, usually via CSS variables and data-theme.
+
+ToastContext:
+- Global notifications for success/error/info feedback.
+
+ConfirmContext:
+- Unified confirmation modal for destructive actions (clear/delete).
+
+Doctor discussion value:
+Context avoids prop drilling and keeps cross-cutting concerns centralized.
+
+
+--------------------------------------------------------------------------------
+7) LAYOUT AND NAVIGATION EXPERIENCE
+--------------------------------------------------------------------------------
+
+AppLayout:
+- Shared structure for all /app pages.
+- Common components: Sidebar, Header, Breadcrumbs, Outlet content area.
+
+Header:
+- Uses usePageTitle() to map route path to page title/subtitle.
+
+Breadcrumbs:
+- Parses current path and builds navigation trail.
+
+Sidebar:
+- Main navigation links to all protected modules.
+
+KeyboardShortcuts + SkipLink:
+- Improves keyboard accessibility and navigation speed.
+
+
+--------------------------------------------------------------------------------
+8) API COMMUNICATION FROM FRONTEND
+--------------------------------------------------------------------------------
+
+Base URL pattern:
+- const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000"
+
+Request types:
+- JSON requests (auth endpoints)
+- multipart/form-data requests (scan upload)
+- binary response handling for DICOM file retrieval
+
+Auth headers:
+- helper in src/lib/apiAuth.ts
+- Authorization: Bearer <token> when needed
+
+Error strategy:
+- Try/catch for network failures
+- Check res.ok for HTTP failures
+- Parse response safely and show user-friendly messages
+
+Offline strategy:
+- OfflineBanner informs users about network disconnect state.
+
+
+--------------------------------------------------------------------------------
+9) FRONTEND DICOM WORKFLOW (CLIENT SIDE)
+--------------------------------------------------------------------------------
+
+Upload interactions:
+- User picks file(s) or drags/drops.
+- Frontend filters expected DICOM extensions/types.
+- Optional metadata extraction via dicom-parser.
+- FormData is sent to /api/scan/upload.
+
+Returned data handling:
+- Store metadata from backend response.
+- Show upload result, including duplicate-skip behavior if backend returns it.
+
+File reading/viewing path:
+- For file access, frontend calls /api/scan/:id/file and handles binary data.
+
+Important discussion point:
+Frontend validation improves UX but does NOT replace backend validation.
+Backend remains the trust boundary.
+
+
+--------------------------------------------------------------------------------
+10) PAGE-BY-PAGE DISCUSSION CHECKLIST
+--------------------------------------------------------------------------------
+
+Landing/Login/Signup/ForgotPassword:
+- Entry and identity workflow
+- Input validation and auth action handling
+
+Dashboard:
+- Overall system summary and quick actions
+
+Patients/PatientDetail:
+- Patient-centered navigation and record access behavior
+
+UploadScan:
+- Main medical file intake flow (selection, filtering, upload, feedback)
+
+AnalysisStudio:
+- Technical analysis workflow entry and data-driven visualization area
+
+Reports/ReportDetail:
+- Generated analysis outputs and detail drill-down
+
+Compare:
+- Multi-scan comparison user flow
+
+ShareCase:
+- Collaboration and sharing UI concept
+
+Analytics:
+- Aggregate insights view
+
+Admin:
+- Administrative/management controls
+
+Settings:
+- User preferences and configuration
+
+Notifications:
+- Event and status communication center
+
+Help:
+- User guidance and support content
+
+Search:
+- Global searching and fast data retrieval UX
+
+Status:
+- Operational state visibility
+
+Tip for doctor discussion:
+Explain each page using: input -> process -> output -> clinical value.
+
+
+--------------------------------------------------------------------------------
+11) ACCESSIBILITY (A11Y) AND UX QUALITY
+--------------------------------------------------------------------------------
+
+Implemented patterns:
+- Skip link for keyboard users
+- Focus handling support (focus trap hook for dialogs/modals)
+- Keyboard shortcuts component
+- Semantic structure via routed layout sections
+
+Quality components:
+- ErrorBoundary prevents total white-screen failures.
+- LoadingBar gives global progress feedback.
+- EmptyState components improve clarity when data is absent.
+
+
+--------------------------------------------------------------------------------
+12) PERFORMANCE AND MAINTAINABILITY
+--------------------------------------------------------------------------------
+
+Performance choices:
+- Vite for fast dev and optimized bundles
+- React component separation to limit unnecessary rerenders
+- Context split by concern (auth/theme/toast/confirm) instead of one huge store
+
+Maintainability choices:
+- Feature and layout separation by folders
+- CSS per component/page for predictable styling ownership
+- TypeScript annotations documenting component/API contracts
+
+Potential future improvements:
+- Route-level lazy loading
+- Data fetching abstraction layer (service module or React Query)
+- More memoization on expensive computed UI blocks
+
+
+--------------------------------------------------------------------------------
+13) FRONTEND SECURITY TALKING POINTS
+--------------------------------------------------------------------------------
+
+Current strengths:
+- Token-based session handling
+- Protected UI routes
+- Error handling for malformed/failed responses
+
+Known limitations and realistic enhancements:
+- localStorage token risk under XSS -> consider HttpOnly cookies in production
+- Add stricter client input sanitization where needed
+- Add CSP and secure headers through deployment layer
+
+
+--------------------------------------------------------------------------------
+14) TESTING AND VALIDATION STRATEGY (HOW TO DEFEND YOUR WORK)
+--------------------------------------------------------------------------------
+
+Minimum expected manual test matrix:
+- Register -> Login -> /api/auth/me restore user
+- Logout clears token and locks /app routes
+- Upload valid DICOM, reject invalid type
+- List scans, open scan detail, fetch file, delete scan
+- Handle server down / network failure
+- Dark/light theme and basic responsive behavior
+
+Recommended automation additions:
+- Unit tests for hooks/context utilities
+- Integration tests for auth and upload screens
+- End-to-end flow tests for critical path
+
+
+--------------------------------------------------------------------------------
+15) COMMON DOCTOR QUESTIONS WITH STRONG ANSWERS
+--------------------------------------------------------------------------------
+
+Q: Why this frontend architecture?
+A: It separates concerns cleanly: route shell, shared state contexts, page-level
+   features, and utility modules. It is scalable for adding medical modules.
+
+Q: How do you ensure robustness?
+A: Typed code, guarded routes, centralized auth context, explicit error handling,
+   fallback UI (ErrorBoundary), and user feedback (toasts/loading/offline state).
+
+Q: How is this clinically useful?
+A: It supports practical workflow steps: secure access, scan upload, analysis
+   entry, comparison/report navigation, and decision-support visibility.
+
+Q: What would you improve next?
+A: Stronger production auth strategy, expanded role-based authorization UX,
+   test automation, and advanced image interaction/reporting modules.
+
+
+--------------------------------------------------------------------------------
+16) ONE-MINUTE FRONTEND SUMMARY (FOR DISCUSSION OPENING)
+--------------------------------------------------------------------------------
+
+The frontend is a React + TypeScript medical dashboard that handles user session,
+navigation, upload and analysis workflows, and communication with backend APIs.
+It uses protected routing, context-based global state, reusable layout components,
+and clear user feedback systems. The architecture is practical for a graduation
+project while still following production-oriented principles and leaving a clear
+path for security, testing, and scalability improvements.
+
+================================================================================
+END OF FRONTEND FULL DOCTOR DISCUSSION GUIDE
+================================================================================
