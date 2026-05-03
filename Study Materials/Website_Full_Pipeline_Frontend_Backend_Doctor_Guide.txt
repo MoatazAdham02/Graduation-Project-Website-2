@@ -3,344 +3,323 @@ COROnet - FULL WEBSITE PIPELINE (FRONTEND + BACKEND) DOCTOR GUIDE
 ================================================================================
 
 Purpose:
-This document explains the complete end-to-end pipeline of the website, from
-user interaction in the browser to backend processing, database persistence, and
-response rendering. It is written for deep academic/doctor discussion.
+End-to-end pipeline from browser to database and disk, for doctor discussion.
+Every subsection includes HOW CREATED: concrete tools, libraries, and patterns.
+
+Legend — “HOW CREATED”:
+- Frontend: React 19, TypeScript, Vite, react-router-dom, fetch, Context API,
+  framer-motion, lucide-react, dicom-parser, react-zoom-pan-pinch, html2canvas,
+  jspdf (see repo package.json).
+- Backend (primary): Node.js, Express 5, mongoose, multer, jsonwebtoken,
+  bcryptjs, cors, dotenv (see Backend/package.json).
+- Backend (alternate): FastAPI, uvicorn, motor, pymongo, python-jose, passlib,
+  pydantic-settings, python-multipart (see Backend/requirements-fastapi.txt).
 
 
 --------------------------------------------------------------------------------
 1) SYSTEM-LEVEL ARCHITECTURE
 --------------------------------------------------------------------------------
 
-The project uses a 3-layer architecture:
+Three layers:
 
-1) Frontend (React + TypeScript + Vite)
-- Runs in browser, manages UI and user flow.
-- Sends HTTP requests to backend APIs.
+1) Frontend (SPA)
+- Role: UI, routing, client state, HTTP client to API.
+- HOW CREATED: Vite + React + TypeScript; entry src/main.tsx (createRoot);
+  app shell src/App.tsx (BrowserRouter, Routes, providers).
 
-2) Backend API
-- Primary implementation: Node.js + Express (port 4000 by default).
-- Alternative implementation present: FastAPI (Python, port 8000 default).
-- Exposes REST endpoints under /api.
+2) Backend API (REST)
+- Role: auth, validation, persistence, file I/O, JSON/binary responses.
+- HOW CREATED (Express path): Backend/server.js — express(), cors middleware,
+  express.json(), route mounts, mongoose connect, listen(PORT).
+- HOW CREATED (FastAPI path): Backend/main.py — FastAPI app, CORSMiddleware,
+  include_router for scan/items; uvicorn entry; optional second stack.
 
-3) Data/Storage layer
-- MongoDB for users/scans/items.
-- Filesystem storage for uploaded DICOM files (uploads/dicom).
+3) Data / storage
+- Role: user records, scan metadata, binary DICOM on disk.
+- HOW CREATED: MongoDB via mongoose (Node) or motor/pymongo (Python); multer
+  diskStorage (Node) or UploadFile write to Path (FastAPI); local folder
+  uploads/dicom.
 
-Communication style:
-- Request/response over HTTP.
-- Mostly JSON; DICOM file endpoint returns binary file data.
+
+Communication:
+- HTTP request/response; JSON for most APIs; raw file bytes for GET .../file.
+- HOW CREATED: browser fetch (frontend); res.json / res.sendFile (Express);
+  FileResponse / JSONResponse (FastAPI).
 
 
 --------------------------------------------------------------------------------
-2) STARTUP PIPELINE (WHAT HAPPENS WHEN EVERYTHING RUNS)
+2) STARTUP PIPELINE
 --------------------------------------------------------------------------------
 
 Frontend startup:
-1) Browser loads built assets (or Vite dev server assets).
-2) main.tsx mounts App.
-3) Providers initialize (theme, toast, confirm, auth).
-4) AuthContext checks stored token and validates via /api/auth/me.
-5) Router resolves route and renders page.
+1) Load bundle from Vite dev server or static host.
+2) main.tsx mounts <App /> in StrictMode.
+3) Providers run (Theme, Toast, Confirm, Auth).
+4) AuthContext: read localStorage token; fetch GET /api/auth/me with Bearer.
+5) Router matches URL; renders page + layout.
+
+HOW CREATED: Vite (import.meta.env); react-dom createRoot; react-router-dom;
+React Context providers in src/contexts/*.tsx.
 
 Backend startup (Express):
-1) Load environment variables from Backend/.env.
-2) Create Express app.
-3) Configure CORS + JSON body parser.
-4) Register health/auth/scan/items route modules.
-5) Connect to MongoDB.
-6) Begin listening on configured port.
+1) dotenv loads Backend/.env (path joined in server.js).
+2) express() app; cors({ origin: [...] }); express.json().
+3) Routes: /api/health, /api/items, /api/scan, /api/auth.
+4) await connectDB() (mongoose).
+5) app.listen(PORT).
 
-Backend startup (FastAPI alternative):
-1) Load settings from env.
-2) Initialize FastAPI app + CORS.
-3) Initialize Mongo client lifecycle.
-4) Register routers.
-5) Run with uvicorn.
+HOW CREATED: ES modules (package.json "type": "module"); Backend/server.js;
+Backend/config/db.js for mongoose.connect.
 
+Backend startup (FastAPI):
+1) pydantic-settings loads env in config.py.
+2) FastAPI app + lifespan; CORSMiddleware.
+3) get_client() AsyncIOMotorClient; routers mounted.
+4) uvicorn main:app --reload (optional).
 
---------------------------------------------------------------------------------
-3) AUTH PIPELINE (REGISTER -> LOGIN -> SESSION -> PROTECTED ACCESS)
---------------------------------------------------------------------------------
-
-Register flow:
-Frontend:
-- Signup page submits name/email/password to POST /api/auth/register.
-
-Backend (Express):
-- Validate input (required fields + password length).
-- Normalize email.
-- Check for duplicate user.
-- Hash password (bcrypt pre-save hook in User model).
-- Create user document in MongoDB.
-- Sign JWT token using JWT_SECRET.
-- Return token + public user object.
-
-Frontend:
-- Store token in localStorage (coronet-token).
-- Store user in AuthContext state.
-- User can access /app routes.
-
-Login flow:
-Frontend:
-- Login page sends credentials to POST /api/auth/login.
-
-Backend:
-- Find user by email.
-- Compare password with hash.
-- Return JWT + user data on success.
-
-Session restore flow:
-Frontend:
-- On reload, read token and call GET /api/auth/me with Bearer token.
-
-Backend:
-- authMiddleware verifies JWT.
-- Loads user from DB.
-- Returns user if valid; 401 if invalid/expired.
-
-Protected route flow:
-- ProtectedLayout blocks /app if no valid user in context.
-- Redirects unauthenticated users to /login.
+HOW CREATED: Backend/main.py, Backend/database.py, Backend/routers/*.py.
 
 
 --------------------------------------------------------------------------------
-4) DICOM UPLOAD PIPELINE (END-TO-END CRITICAL PATH)
+3) AUTH PIPELINE (REGISTER -> LOGIN -> SESSION -> PROTECTED UI)
 --------------------------------------------------------------------------------
 
-Step A - Client selection:
-- User selects or drags DICOM file(s) in UploadScan/Compare.
-- Frontend prepares FormData with field name "file".
-- Optional metadata fields included: patientName, studyDate, modality.
+Register:
+- Frontend: Signup form -> POST /api/auth/register (JSON body).
+  HOW CREATED: AuthContext register(); fetch + JSON.stringify; React controlled
+  inputs.
+- Express: validate body; normalize email; User.create; jwt.sign; 201 JSON.
+  HOW CREATED: Backend/routes/auth.routes.js; User model pre-save bcrypt hash
+  (bcryptjs in User.js); jsonwebtoken.
 
-Step B - HTTP request:
-- POST /api/scan/upload
-- Headers managed automatically for multipart/form-data by browser.
-- Authorization Bearer token is included because scan routes are protected in
-  current Express code.
+Login:
+- Frontend: POST /api/auth/login.
+  HOW CREATED: AuthContext login(); same fetch pattern.
+- Express: find user; user.comparePassword; jwt.sign; 200 JSON.
+  HOW CREATED: auth.routes.js; bcrypt.compare via model method.
 
-Step C - Backend validation (Express):
-- authMiddleware validates user token and attaches req.user.
-- Multer validates file type (.dcm/.dicom or application/dicom).
-- Multer enforces max file size (500 MB).
-- Safe filename generated; file written to uploads/dicom.
+Session restore (/me):
+- Frontend: GET /api/auth/me with Authorization: Bearer.
+  HOW CREATED: AuthContext loadUser(); authHeaders from src/lib/apiAuth.ts.
+- Express: authMiddleware verifies JWT; attaches req.user; returns user JSON.
+  HOW CREATED: Backend/middleware/auth.js — jwt.verify, User.findById.
 
-Step D - Duplicate policy:
-- Backend checks existing scan by same user + filename + studyDate (+ patient).
-- If duplicate: returns 201 with skipped=true and reason.
+Protected /app UI:
+- Frontend: ProtectedLayout uses useAuth; Navigate to /login if no user.
+  HOW CREATED: ProtectedLayout.tsx + react-router-dom Navigate, Outlet.
 
-Step E - Persistence:
-- Create scan document in MongoDB including:
-  userId, doctorName, originalName, path, size, mimeType, patientName,
-  studyDate, modality, timestamps.
-
-Step F - API response:
-- Returns uploaded scan metadata.
-- Frontend updates UI and notifies user.
+Doctor note: UI protection complements but does not replace server auth on APIs.
 
 
 --------------------------------------------------------------------------------
-5) SCAN LIST/DETAIL/FILE/DELETE PIPELINES
+4) DICOM UPLOAD PIPELINE (END-TO-END)
 --------------------------------------------------------------------------------
 
-List scans:
-1) Frontend GET /api/scan with token.
-2) Backend filters by req.user._id (user-specific data isolation).
-3) Returns summary list sorted by newest first.
-4) Frontend renders cards/tables for user.
+A) Client file selection:
+- HOW CREATED: React state + <input type="file"> and/or drag-drop in
+  UploadScan.tsx (and Compare where used); optional dicom-parser read for tags.
 
-Get one scan metadata:
-1) Frontend GET /api/scan/:id with token.
-2) Backend verifies scan belongs to current user.
-3) Returns metadata object.
+B) Multipart request:
+- HOW CREATED: FormData.append('file', file); fetch POST /api/scan/upload;
+  browser sets multipart boundary; Authorization from authHeaders().
 
-Get scan file:
-1) Frontend GET /api/scan/:id/file with token.
-2) Backend verifies ownership and resolves absolute file path.
-3) Backend blocks path traversal by enforcing path inside UPLOAD_DIR.
-4) Backend sends file bytes with appropriate media type.
-5) Frontend processes binary content for viewing/parsing.
+C) Express handling:
+- HOW CREATED: scan.routes.js — router.use(authMiddleware); multer upload.single('file');
+  fileFilter for .dcm/.dicom or application/dicom; limits.fileSize 500MB;
+  diskStorage writes under Backend/uploads/dicom.
 
-Delete scan:
-1) Frontend DELETE /api/scan/:id with token.
-2) Backend verifies ownership.
-3) Removes file from disk if present.
-4) Removes document from MongoDB.
-5) Returns { ok: true }.
-6) Frontend refreshes list and confirms deletion.
+D) Duplicate handling:
+- HOW CREATED: Scan.findOne by userId + originalName + studyDate (+ patient match);
+  if duplicate -> 201 JSON with skipped: true.
 
+E) DB insert:
+- HOW CREATED: Scan.create({ userId, doctorName from req.user.name, path from
+  multer, size, mimeType, patientName, studyDate, modality }); mongoose model
+  Backend/models/Scan.js.
 
---------------------------------------------------------------------------------
-6) DATA FLOW MODEL (WHAT MOVES WHERE)
---------------------------------------------------------------------------------
-
-Identity data:
-- Browser localStorage: token
-- Frontend state: user profile
-- Database: user document (hashed password, never plaintext)
-
-Medical scan metadata:
-- Input form fields from UI
-- Saved in MongoDB scan records
-- Sent back to frontend in scan APIs
-
-Medical scan file bytes:
-- Uploaded from browser to backend using multipart
-- Stored on disk under uploads/dicom
-- Retrieved by id via controlled file endpoint
-
-Control/feedback data:
-- HTTP status codes
-- JSON success/error bodies
-- Toasts/loading/offline indicators in frontend
+F) Response + UI:
+- HOW CREATED: res.status(201).json(...); frontend parses JSON; ToastContext or
+  inline message.
 
 
 --------------------------------------------------------------------------------
-7) SECURITY PIPELINE (CURRENT + DISCUSSION POINTS)
+5) SCAN LIST / METADATA / FILE / DELETE
 --------------------------------------------------------------------------------
 
-Current implemented protections:
-- Password hashing with bcrypt.
-- JWT authentication for protected routes.
-- Scan route authorization by user ownership (Express version).
-- CORS allow-list for frontend origins.
-- Upload file type/size validation.
-- Path traversal prevention before serving files.
+List GET /api/scan:
+- HOW CREATED (Express): authMiddleware; Scan.find({ userId: req.user._id })
+  .sort({ createdAt: -1 }).select(...).lean(); map _id to id in JSON.
 
-Potential weaknesses to discuss honestly:
-- Token in localStorage is exposed if XSS occurs.
-- No role-based authorization layer shown (admin vs doctor vs user).
-- Rate limiting and advanced security headers are not explicitly shown.
+Detail GET /api/scan/:id:
+- HOW CREATED: Scan.findOne({ _id, userId }); 404 if missing.
 
-Practical next upgrades:
-- Move auth to HttpOnly cookie + CSRF strategy.
-- Add Helmet/rate limiting/audit logs.
-- Add role claims and route-level access policies.
+File GET /api/scan/:id/file:
+- HOW CREATED: resolve path; path.resolve(scan.path).startsWith(UPLOAD_DIR);
+  res.setHeader Content-Type; res.sendFile(absolutePath).
+
+Delete DELETE /api/scan/:id:
+- HOW CREATED: findOne; fs.unlinkSync if inside UPLOAD_DIR; Scan.deleteOne.
+
+Frontend consumption:
+- HOW CREATED: fetch with authHeaders; res.json() for lists; res.arrayBuffer()
+  for DICOM bytes in Analysis Studio / viewer flow.
 
 
 --------------------------------------------------------------------------------
-8) ERROR HANDLING PIPELINE
+6) DATA FLOW MODEL (WHAT MOVES WHERE + HOW CREATED)
+--------------------------------------------------------------------------------
+
+Identity:
+- Token in localStorage (coronet-token); user in React state; password hash in
+  MongoDB users collection.
+- HOW CREATED: localStorage API; AuthContext; mongoose User schema with bcrypt
+  pre-save.
+
+Scan metadata:
+- Form fields + server fields -> MongoDB scans documents.
+- HOW CREATED: mongoose schema fields; JSON over HTTP.
+
+File bytes:
+- Browser -> multer -> disk path string in DB -> sendFile back to client.
+- HOW CREATED: multer + fs; Express static file response.
+
+Feedback:
+- HTTP status + { error: "..." } or success payloads; toasts in UI.
+- HOW CREATED: Express error middleware; ToastContext on client.
+
+
+--------------------------------------------------------------------------------
+7) SECURITY PIPELINE (+ HOW CREATED)
+--------------------------------------------------------------------------------
+
+Implemented (Express stack):
+- Password hashing: bcryptjs in User model pre-save hook.
+- JWT: jsonwebtoken sign/verify; secret from process.env.JWT_SECRET.
+- Protected scan routes: authMiddleware on router in scan.routes.js.
+- User-scoped queries: userId on Scan documents.
+- CORS: cors package with allow-list built from env + localhost:5173.
+- Upload validation: multer fileFilter + size limit.
+- Path traversal guard: resolved path must stay under UPLOAD_DIR before sendFile.
+
+HOW CREATED: packages above; implementation in middleware/auth.js,
+routes/scan.routes.js, server.js CORS array.
+
+Honest gaps (discussion):
+- JWT in localStorage (XSS risk); no rate limit in repo; no Helmet layer;
+  role-based RBAC not fully modeled in frontend.
+
+Future hardening HOW (conceptual): httpOnly cookies + CSRF; express-rate-limit;
+helmet; refresh tokens; audit logs.
+
+
+--------------------------------------------------------------------------------
+8) ERROR HANDLING PIPELINE (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
 Frontend:
-- Handles network errors and non-OK responses.
-- Parses text/json safely and shows user-readable messages.
+- try/catch on fetch; read res.text then JSON.parse when needed; user-facing errors.
+- HOW CREATED: plain async/await in AuthContext and pages; ErrorBoundary for
+  render errors.
 
-Backend Express:
-- Route-level try/catch.
-- Global error middleware for consistent JSON errors.
-- Special handling for known upload errors (e.g., file too large).
+Express:
+- try/catch in route handlers; next(err) pattern; global error middleware maps
+  multer LIMIT_FILE_SIZE to 400.
+- HOW CREATED: server.js error-handling middleware at bottom of file.
 
-Backend FastAPI:
-- HTTPException for controlled failures.
-- Exception handler normalizes error payload shape.
-
-Result:
-- End users receive stable feedback instead of silent failures.
+FastAPI:
+- HTTPException; custom handler in main.py flattening detail to { error }.
+- HOW CREATED: FastAPI exception_handler registration.
 
 
 --------------------------------------------------------------------------------
-9) CORS AND ENVIRONMENT PIPELINE
+9) CORS AND ENVIRONMENT (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
-Environment variables:
-- Frontend uses VITE_API_URL.
-- Backend uses PORT, MONGODB_URI, JWT_SECRET, CORS_ORIGIN, UPLOAD_DIR.
+Frontend env:
+- VITE_API_URL -> import.meta.env.VITE_API_URL
+- HOW CREATED: Vite env injection; .env / .env.example at repo root.
 
-CORS behavior:
-- Browser enforces same-origin policy.
-- Backend explicitly allows trusted frontend origins.
-- Without correct CORS setup, browser blocks requests before app logic runs.
+Backend env (Express):
+- PORT, MONGODB_URI, JWT_SECRET, CORS_ORIGIN (comma-separated extra origins).
+- HOW CREATED: dotenv.config in server.js reading Backend/.env.
 
-Deployment implication:
-- Update env values per environment (dev/staging/production).
-
-
---------------------------------------------------------------------------------
-10) FASTAPI VS EXPRESS PIPELINE NOTES
---------------------------------------------------------------------------------
-
-Express (Node) is the active full pipeline in current routing usage:
-- Auth routes implemented and mounted.
-- Scan routes protected with auth middleware and per-user filtering.
-- User and scan models are complete.
-
-FastAPI code exists as an alternative backend path:
-- Includes health, scan, items modules and auth utilities.
-- Useful for future Python/AI-oriented backend expansion.
-- In current files, FastAPI main imports auth router that is not present under
-  routers/, so FastAPI path may need synchronization before production use.
-
-Discussion strategy:
-Present Express as the working implementation and FastAPI as an extensibility
-track for ML-centric backend evolution.
+CORS:
+- HOW CREATED: cors npm package; browser preflight handled by middleware.
 
 
 --------------------------------------------------------------------------------
-11) CLINICAL/ACADEMIC VALUE OF THIS PIPELINE
+10) EXPRESS VS FASTAPI (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
-Why this pipeline is meaningful:
-- It models a real medical workflow: secure login -> scan intake -> metadata
-  management -> retrieval/comparison/reporting support.
-- It separates concerns so each layer can evolve independently.
-- It keeps critical decisions on backend trust boundaries (auth, file checks).
-- It is practical to demo and still defensible from a software engineering view.
+Express (recommended “main” story for this repo):
+- Full auth routes + protected scan routes + mongoose models.
+- HOW CREATED: Node LTS; npm scripts npm run dev in Backend/; server.js entry.
 
+FastAPI (parallel / future AI integration):
+- Async Mongo via motor; routers for scan/items; auth helpers in auth.py.
+- HOW CREATED: pip install -r requirements-fastapi.txt; uvicorn main:app.
+- Note: main.py may import routers/auth modules — verify project tree matches
+  before presenting as production-equal to Express.
 
---------------------------------------------------------------------------------
-12) END-TO-END DEMO SCRIPT (FOR DOCTOR MEETING)
---------------------------------------------------------------------------------
-
-Use this sequence live:
-1) Start backend and frontend.
-2) Show /api/health and mention DB status.
-3) Register new account and explain hashing + JWT issuance.
-4) Login and explain session restore from /api/auth/me.
-5) Upload DICOM with patient metadata.
-6) Show scan appears in user-specific list.
-7) Open scan file endpoint behavior and explain safe path serving.
-8) Delete scan and verify DB + disk cleanup.
-9) Explain error scenarios (invalid token, bad file type, backend down).
-10) Close with security/performance improvements roadmap.
+Discussion strategy: Express = current integrated API; FastAPI = optional Python
+path for ML services.
 
 
 --------------------------------------------------------------------------------
-13) POSSIBLE HARD QUESTIONS AND DIRECT ANSWERS
+11) CLINICAL / ACADEMIC VALUE (+ HOW CREATED FRAMING)
+--------------------------------------------------------------------------------
+
+- Models realistic imaging workflow in software layers.
+- HOW CREATED (argument): SPA for UX; REST for interoperability; MongoDB for
+  flexible scan documents; disk storage for large DICOM blobs; JWT for
+  stateless auth demos.
+
+
+--------------------------------------------------------------------------------
+12) END-TO-END DEMO SCRIPT (TOOLS YOU NAME OUT LOUD)
+--------------------------------------------------------------------------------
+
+1) Terminal: npm run dev (frontend, Vite) + npm run dev (Backend, node --watch).
+2) Browser: open Vite URL; show Network tab fetch to API.
+3) GET /api/health — Express + mongoose connection state JSON.
+4) Register/login — JWT in Application > Local Storage; /api/auth/me.
+5) Upload DICOM — FormData in Network; multer file on disk; new Scan in MongoDB.
+6) List scans — GET /api/scan JSON array.
+7) Download file — GET /api/scan/:id/file; Content-Type application/dicom.
+8) Delete — DELETE; fs.unlink + deleteOne.
+9) Break token — show 401 and UI logout path.
+10) Mention hardening roadmap (cookies, rate limit, RBAC).
+
+
+--------------------------------------------------------------------------------
+13) HARD QUESTIONS — SHORT ANSWERS (+ WHERE IN STACK)
 --------------------------------------------------------------------------------
 
 Q: Where is authorization enforced?
-A: Backend scan routes in Express require authMiddleware and query by userId, so
-   each user accesses only their own scan records.
+A: Express scan router uses authMiddleware + userId filter — server-side.
 
-Q: Why not trust frontend validation only?
-A: Frontend can be bypassed. Backend is the trust boundary and performs final
-   validation and authorization.
+Q: Why validate on both client and server?
+A: Client = UX; server = trust boundary (multer + mongoose + auth).
 
-Q: How do you prevent someone downloading arbitrary server files?
-A: File endpoint resolves absolute path and confirms it remains inside upload
-   directory before sending. Invalid paths are rejected.
+Q: How are files secured on disk?
+A: Randomized safe names; path stored in DB; send only after path.resolve check
+  inside upload directory.
 
-Q: What if database is down?
-A: Health endpoint reports DB status; operational endpoints fail safely with JSON
-   errors, and frontend surfaces readable failure messages.
-
-Q: Is this production-ready?
-A: It is a strong graduation-level architecture; production hardening would add
-   stronger auth transport, rate limiting, monitoring, role-based access, and
-   CI-backed testing.
+Q: Single source of truth for API URL?
+A: Frontend VITE_API_URL; backend own host/port — documented in .env.example.
 
 
 --------------------------------------------------------------------------------
 14) ONE-MINUTE FULL PIPELINE SUMMARY
 --------------------------------------------------------------------------------
 
-The website pipeline starts in a React frontend where authenticated users perform
-medical workflow actions. Requests go to a REST backend (currently Express) that
-validates identity, validates uploads, stores metadata in MongoDB, stores files
-on disk, and returns controlled responses. The frontend renders outcomes with
-clear loading/error feedback. This architecture is modular, explainable, and
-clinically relevant, with a clear path to production-level hardening.
+The COROnet pipeline is a Vite-built React SPA that talks over HTTP to an Express
+REST API backed by MongoDB and local DICOM storage. The frontend uses React
+Router, Context, and fetch; the backend uses Express middleware, mongoose models,
+JWT auth, and multer uploads. Responses are JSON except for binary DICOM
+delivery. Optional FastAPI code offers a Python parallel for future AI-heavy
+services. The design separates presentation, application API, and persistence
+with clear security and validation responsibilities at the server.
 
 ================================================================================
 END OF FULL WEBSITE PIPELINE (FRONTEND + BACKEND) DOCTOR GUIDE

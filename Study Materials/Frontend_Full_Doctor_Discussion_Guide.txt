@@ -3,417 +3,438 @@ COROnet - FRONTEND FULL DOCTOR DISCUSSION GUIDE
 ================================================================================
 
 Purpose:
-This file is a full study reference for discussing the frontend in detail with a
-doctor/supervisor. It explains architecture, decisions, flows, strengths,
-limitations, and likely technical questions.
+This file is a full study reference for discussing the frontend with a doctor or
+supervisor. Every bullet includes HOW IT WAS CREATED: which React/TypeScript
+pieces and npm libraries were used in this project (see package.json).
+
+Legend — “HOW CREATED” shorthand:
+- React: functional components (.tsx), JSX, hooks (useState, useEffect, useMemo,
+  useCallback, useContext, etc.)
+- react-router-dom: BrowserRouter, Routes, Route, Link, NavLink, Navigate,
+  Outlet, useNavigate, useLocation, useParams, useSearchParams
+- Vite: dev server, build; import.meta.env.VITE_* for environment variables
+- TypeScript: types for props, API shapes, safer refactors
+- CSS: paired .tsx + .css files; global styles in src/index.css
+- Context API: createContext + Provider + custom hooks (e.g. useAuth)
+- fetch: browser Fetch API (no axios in dependencies)
 
 
 --------------------------------------------------------------------------------
 1) FRONTEND OVERVIEW (WHAT IT IS RESPONSIBLE FOR)
 --------------------------------------------------------------------------------
 
-The frontend is a React + TypeScript + Vite single-page application (SPA). It is
-responsible for:
+The frontend is a React + TypeScript + Vite single-page application (SPA).
+HOW CREATED: Vite scaffolds the app; react + react-dom render UI; entry in
+src/main.tsx uses createRoot(...).render(<StrictMode><App/></StrictMode>).
+
+It is responsible for:
 - User interface (forms, pages, navigation, dashboard, uploads, reports)
+  HOW CREATED: page components under src/pages and src/pages/app; layout under
+  src/components/layout; icons via lucide-react; motion via framer-motion.
 - Session experience (login/register state in browser)
+  HOW CREATED: AuthContext (React Context + hooks); token in localStorage;
+  API calls with fetch to /api/auth/*.
 - Calling backend APIs (auth + scan operations)
+  HOW CREATED: fetch + JSON or FormData; base URL import.meta.env.VITE_API_URL
+  || http://localhost:4000; Authorization header from src/lib/apiAuth.ts.
 - Showing status, loading, errors, offline states, and confirmations
+  HOW CREATED: ToastContext + ConfirmContext (with framer-motion for overlays);
+  OfflineBanner; LoadingBar; ErrorBoundary class component pattern.
 - Displaying and organizing medical workflow screens for users
+  HOW CREATED: React Router nested routes; AppLayout shell with Sidebar/Header.
 
 It is NOT responsible for:
-- Database operations
-- Password hashing/JWT issuing
-- File storage on disk
-- Server-side access control enforcement
+- Database operations / password hashing / JWT issuing / file storage / server
+  authorization enforcement — those belong to the backend; the frontend only
+  consumes HTTP APIs.
 
 
 --------------------------------------------------------------------------------
-2) TECH STACK AND WHY EACH CHOICE MATTERS
+2) TECH STACK AND WHY EACH CHOICE MATTERS (WITH HOW CREATED)
 --------------------------------------------------------------------------------
 
-Core:
-- React 19: component-based UI and maintainability for a multi-page dashboard.
-- TypeScript: static typing for safer refactors and fewer runtime bugs.
-- Vite: fast local development and efficient production bundling.
-- React Router v7: nested routing for public routes and protected app routes.
+Core runtime & tooling:
+- React 19 + react-dom 19
+  HOW CREATED: UI built from function components; event handlers; hooks-driven
+  state and side effects.
+- TypeScript (~5.9)
+  HOW CREATED: .tsx files; explicit types for context values, route params,
+  API response shapes where used.
+- Vite (~7) + @vitejs/plugin-react
+  HOW CREATED: npm run dev / npm run build; fast HMR in development; bundled
+  production assets from src/.
+- react-router-dom v7
+  HOW CREATED: declarative routing in src/App.tsx; nested layouts for /app;
+  programmatic navigation with useNavigate.
 
-UI/Interaction:
-- Framer Motion: smooth, professional transitions and motion-based feedback.
-- Lucide React: consistent icon system.
-- CSS files per page/component + global variables in index.css.
+UI & motion:
+- framer-motion
+  HOW CREATED: motion.* components, AnimatePresence, variants, staggered lists
+  on Landing, Sidebar, Dashboard, modals/toasts, many app pages.
+- lucide-react
+  HOW CREATED: icon components (e.g. LayoutDashboard, Upload) in Sidebar,
+  headers, empty states.
 
-Medical/Data utilities:
-- dicom-parser: parse DICOM metadata client-side when needed.
-- react-zoom-pan-pinch: useful for zoom/pan interactions in image-oriented views.
+Medical / imaging helpers:
+- dicom-parser
+  HOW CREATED: imported in UploadScan.tsx and AnalysisStudio.tsx to read DICOM
+  byte tags in the browser (metadata / parsing pipeline on the client).
+- react-zoom-pan-pinch
+  HOW CREATED: TransformWrapper + TransformComponent in AnalysisStudio.tsx for
+  zoom/pan on the imaging viewport.
 
-Export/report utilities:
-- html2canvas + jsPDF: allows converting UI snapshots/reports into PDFs.
+Document export:
+- html2canvas + jspdf
+  HOW CREATED: src/lib/downloadReportPdf.ts captures a DOM node to canvas then
+  builds a PDF (used where “export report” UX is wired).
+
+Quality tooling (dev):
+- eslint, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh
+  HOW CREATED: npm run lint; static analysis in editor/CI (not runtime).
 
 
 --------------------------------------------------------------------------------
-3) PROJECT FRONTEND STRUCTURE (MENTAL MAP)
+3) PROJECT FRONTEND STRUCTURE (MENTAL MAP + HOW CREATED)
 --------------------------------------------------------------------------------
 
-Main structure in src:
 - src/main.tsx
-  Entry point, mounts <App /> inside <StrictMode>.
+  HOW CREATED: React 19 entry; createRoot on #root; imports ./index.css.
 
 - src/App.tsx
-  App composition root:
-  ErrorBoundary -> ThemeProvider -> ToastProvider -> ConfirmProvider
-  -> AuthProvider -> BrowserRouter -> Routes
+  HOW CREATED: composes providers (Theme, Toast, Confirm, Auth) then
+  BrowserRouter + Routes + Route tree; wraps tree in ErrorBoundary.
 
-- src/pages/
-  Public pages (Landing, Login, Signup, ForgotPassword, Terms, Privacy, etc.)
+- src/pages/ (public)
+  HOW CREATED: one .tsx (+ often .css) per screen: Landing, Login, Signup, etc.;
+  many use framer-motion for entrance animations.
 
-- src/pages/app/
-  Protected application pages:
-  Dashboard, Patients, PatientDetail, UploadScan, AnalysisStudio, Reports,
-  ReportDetail, Compare, ShareCase, Analytics, Admin, Settings, Notifications,
-  Help, Search, Status.
+- src/pages/app/ (protected area)
+  HOW CREATED: feature pages matched by routes in App.tsx (Dashboard, UploadScan,
+  AnalysisStudio, Reports, ReportDetail, Compare, …).
 
 - src/components/
-  Reusable UI: ErrorBoundary, OfflineBanner, LoadingBar, SkipLink, EmptyState,
-  and layout components.
+  HOW CREATED: reusable pieces (ErrorBoundary, LoadingBar, SkipLink, EmptyState).
 
 - src/components/layout/
-  App layout shell: AppLayout, Sidebar, Header, Breadcrumbs, KeyboardShortcuts.
+  HOW CREATED: AppLayout (Outlet + shell), Sidebar (NavLink), Header, Breadcrumbs,
+  KeyboardShortcuts — routing from react-router-dom + motion from framer-motion.
 
 - src/contexts/
-  Shared global state: AuthContext, ThemeContext, ToastContext, ConfirmContext.
+  HOW CREATED: React Context API files: AuthContext, ThemeContext, ToastContext,
+  ConfirmContext — each exports Provider + hook.
 
 - src/hooks/
-  Reusable logic: usePageTitle, useFocusTrap.
+  HOW CREATED: custom hooks — usePageTitle (useLocation + route map), useFocusTrap
+  (DOM focus management for accessibility).
 
 - src/lib/
-  Small utilities (auth header helper, PDF download helper, notification state).
+  HOW CREATED: plain TS modules — apiAuth (localStorage + header helper),
+  downloadReportPdf (html2canvas + jspdf), notification helpers.
 
 
 --------------------------------------------------------------------------------
-4) ROUTING SYSTEM (PUBLIC VS PROTECTED)
+4) ROUTING SYSTEM (PUBLIC VS PROTECTED + HOW CREATED)
 --------------------------------------------------------------------------------
 
-Public routes:
-- /
-- /login
-- /signup
-- /forgot-password
-- /onboarding
-- /privacy
-- /terms
+HOW CREATED (overall): react-router-dom in src/App.tsx — BrowserRouter, nested
+Route elements, ProtectedLayout for /app, AppLayout as inner layout with Outlet.
+
+Public routes (examples):
+- /, /login, /signup, /forgot-password, /onboarding, /privacy, /terms
+  HOW CREATED: top-level <Route path="..." element={<Page/>} /> declarations.
 
 Protected section:
-- /app/* is wrapped by ProtectedLayout.
-- Inside /app, AppLayout provides the dashboard shell and nested route content.
+- /app/* under ProtectedLayout; inner routes under AppLayout
+  HOW CREATED: parent Route element={<ProtectedLayout/>} with child routes;
+  AppLayout uses <Outlet/> for nested page content; useAuth for guard logic.
 
-Protected child routes include:
-- /app
-- /app/patients
-- /app/patients/:id
-- /app/upload
-- /app/analysis
-- /app/reports
-- /app/reports/:id
-- /app/compare
-- /app/share
-- /app/analytics
-- /app/admin
-- /app/settings
-- /app/notifications
-- /app/help
-- /app/search
-- /app/status
+Protected child routes (examples):
+- /app, /app/patients, /app/patients/:id, /app/upload, /app/analysis,
+  /app/reports, /app/reports/:id, /app/compare, /app/share, /app/analytics,
+  /app/admin, /app/settings, /app/notifications, /app/help, /app/search, /app/status
+  HOW CREATED: Route path strings + page components; dynamic segments :id read
+  via useParams in page components.
 
 Fallback:
-- * -> NotFound page.
-
-Doctor discussion point:
-Nested routing separates shell concerns (sidebar/header/breadcrumb) from page
-content. This reduces duplication and improves maintainability.
+- * -> NotFound
+  HOW CREATED: catch-all Route path="*".
 
 
 --------------------------------------------------------------------------------
-5) AUTHENTICATION ON FRONTEND (REAL FLOW)
+5) AUTHENTICATION ON FRONTEND (REAL FLOW + HOW CREATED)
 --------------------------------------------------------------------------------
 
-Primary source:
-- AuthContext.tsx
+Primary implementation:
+- src/contexts/AuthContext.tsx
+  HOW CREATED: createContext; AuthProvider with useState for user/token/loading;
+  useCallback for login/register/loadUser; useEffect to restore session;
+  fetch for POST /api/auth/login, POST /api/auth/register, GET /api/auth/me.
 
 Token storage:
-- localStorage key: coronet-token
-
-State in context:
-- user
-- token
-- loading
-- login(email, password)
-- register(name, email, password)
-- logout()
-
-Startup behavior:
-1) On app load, context checks localStorage for token.
-2) If token exists, frontend requests GET /api/auth/me with Bearer token.
-3) If valid: user is restored.
-4) If invalid/expired: token removed and user cleared.
-
-Login/register behavior:
-1) Frontend sends JSON to /api/auth/login or /api/auth/register.
-2) Expects token + user in response.
-3) Saves token to localStorage and updates user state.
+- localStorage key AUTH_TOKEN_KEY = 'coronet-token' (see src/lib/apiAuth.ts)
+  HOW CREATED: synchronous browser API; read in authHeaders() for fetch calls.
 
 Route guarding:
-- ProtectedLayout reads useAuth().
-- While loading: show loading state.
-- If no user: redirect to /login.
-- If user exists: render app routes.
+- ProtectedLayout + useAuth()
+  HOW CREATED: react-router-dom Navigate to /login when !user; Outlet when ok.
 
-Security talking point:
-localStorage is practical for student/demo projects but vulnerable to XSS.
-Production-grade alternatives include HttpOnly cookie-based sessions.
+Security note (discussion):
+- Token in localStorage is convenient for demos; XSS is the main concern.
+  HOW CREATED: no httpOnly cookies in this stack — purely client-stored JWT string.
 
 
 --------------------------------------------------------------------------------
-6) GLOBAL CONTEXTS (WHAT EACH ONE DOES)
+6) GLOBAL CONTEXTS (WHAT EACH ONE DOES + HOW CREATED)
 --------------------------------------------------------------------------------
 
-AuthContext:
-- User session and auth actions.
+- AuthContext — session, login, register, logout
+  HOW CREATED: React Context + fetch + localStorage (above).
 
-ThemeContext:
-- Light/dark mode state and toggling, usually via CSS variables and data-theme.
+- ThemeContext — light/dark (or theme toggle)
+  HOW CREATED: Context + state; typically toggles data-theme / CSS variables
+  (paired with global CSS).
 
-ToastContext:
-- Global notifications for success/error/info feedback.
+- ToastContext — global notifications
+  HOW CREATED: Context holds toast list; framer-motion AnimatePresence for
+  enter/exit; components call addToast.
 
-ConfirmContext:
-- Unified confirmation modal for destructive actions (clear/delete).
+- ConfirmContext — “Are you sure?” modal
+  HOW CREATED: Context exposes confirm(); modal UI uses framer-motion for overlay
+  animation.
 
-Doctor discussion value:
-Context avoids prop drilling and keeps cross-cutting concerns centralized.
-
-
---------------------------------------------------------------------------------
-7) LAYOUT AND NAVIGATION EXPERIENCE
---------------------------------------------------------------------------------
-
-AppLayout:
-- Shared structure for all /app pages.
-- Common components: Sidebar, Header, Breadcrumbs, Outlet content area.
-
-Header:
-- Uses usePageTitle() to map route path to page title/subtitle.
-
-Breadcrumbs:
-- Parses current path and builds navigation trail.
-
-Sidebar:
-- Main navigation links to all protected modules.
-
-KeyboardShortcuts + SkipLink:
-- Improves keyboard accessibility and navigation speed.
+Doctor point: Context avoids prop drilling; for larger apps you might add Zustand
+/ Redux — not in package.json here.
 
 
 --------------------------------------------------------------------------------
-8) API COMMUNICATION FROM FRONTEND
+7) LAYOUT AND NAVIGATION EXPERIENCE (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
-Base URL pattern:
-- const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000"
+- AppLayout — shell with Outlet
+  HOW CREATED: react-router-dom Outlet; framer-motion on layout wrapper where used.
 
-Request types:
-- JSON requests (auth endpoints)
-- multipart/form-data requests (scan upload)
-- binary response handling for DICOM file retrieval
+- Header — title/subtitle from route
+  HOW CREATED: usePageTitle hook (useLocation + pathname → title map).
 
-Auth headers:
-- helper in src/lib/apiAuth.ts
-- Authorization: Bearer <token> when needed
+- Breadcrumbs — trail from pathname
+  HOW CREATED: useLocation; split path segments; Link from react-router-dom;
+  lucide-react ChevronRight.
 
-Error strategy:
-- Try/catch for network failures
-- Check res.ok for HTTP failures
-- Parse response safely and show user-friendly messages
+- Sidebar — primary nav
+  HOW CREATED: NavLink (active classnames); lucide-react icons; framer-motion on
+  aside; useNavigate for sign-out button target.
 
-Offline strategy:
-- OfflineBanner informs users about network disconnect state.
+- KeyboardShortcuts + SkipLink
+  HOW CREATED: custom components; keyboard listeners / focus UX (accessibility).
 
 
 --------------------------------------------------------------------------------
-9) FRONTEND DICOM WORKFLOW (CLIENT SIDE)
+8) API COMMUNICATION FROM FRONTEND (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
-Upload interactions:
-- User picks file(s) or drags/drops.
-- Frontend filters expected DICOM extensions/types.
-- Optional metadata extraction via dicom-parser.
-- FormData is sent to /api/scan/upload.
+- Base URL: import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  HOW CREATED: Vite exposes only VITE_* env vars to the client bundle.
 
-Returned data handling:
-- Store metadata from backend response.
-- Show upload result, including duplicate-skip behavior if backend returns it.
+- JSON requests (auth)
+  HOW CREATED: fetch(..., { method, headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(...) }).
 
-File reading/viewing path:
-- For file access, frontend calls /api/scan/:id/file and handles binary data.
+- Multipart upload (DICOM)
+  HOW CREATED: FormData + formData.append('file', file); fetch POST without
+  forcing Content-Type (browser sets boundary).
 
-Important discussion point:
-Frontend validation improves UX but does NOT replace backend validation.
-Backend remains the trust boundary.
+- Binary download (DICOM file bytes)
+  HOW CREATED: fetch(...); res.arrayBuffer() where needed for parsing/viewing.
 
+- Auth header helper
+  HOW CREATED: src/lib/apiAuth.ts — authHeaders() adds Authorization: Bearer.
 
---------------------------------------------------------------------------------
-10) PAGE-BY-PAGE DISCUSSION CHECKLIST
---------------------------------------------------------------------------------
-
-Landing/Login/Signup/ForgotPassword:
-- Entry and identity workflow
-- Input validation and auth action handling
-
-Dashboard:
-- Overall system summary and quick actions
-
-Patients/PatientDetail:
-- Patient-centered navigation and record access behavior
-
-UploadScan:
-- Main medical file intake flow (selection, filtering, upload, feedback)
-
-AnalysisStudio:
-- Technical analysis workflow entry and data-driven visualization area
-
-Reports/ReportDetail:
-- Generated analysis outputs and detail drill-down
-
-Compare:
-- Multi-scan comparison user flow
-
-ShareCase:
-- Collaboration and sharing UI concept
-
-Analytics:
-- Aggregate insights view
-
-Admin:
-- Administrative/management controls
-
-Settings:
-- User preferences and configuration
-
-Notifications:
-- Event and status communication center
-
-Help:
-- User guidance and support content
-
-Search:
-- Global searching and fast data retrieval UX
-
-Status:
-- Operational state visibility
-
-Tip for doctor discussion:
-Explain each page using: input -> process -> output -> clinical value.
+- Errors / offline
+  HOW CREATED: try/catch around fetch; res.ok checks; user messaging via toasts
+  or inline text; OfflineBanner listens to browser online/offline.
 
 
 --------------------------------------------------------------------------------
-11) ACCESSIBILITY (A11Y) AND UX QUALITY
+9) FRONTEND DICOM WORKFLOW (CLIENT SIDE + HOW CREATED)
 --------------------------------------------------------------------------------
 
-Implemented patterns:
-- Skip link for keyboard users
-- Focus handling support (focus trap hook for dialogs/modals)
-- Keyboard shortcuts component
-- Semantic structure via routed layout sections
+- File pick / drag-drop (upload UX)
+  HOW CREATED: React controlled state for file lists; native <input type="file">
+  and drag events in UploadScan (and similar pages).
 
-Quality components:
-- ErrorBoundary prevents total white-screen failures.
-- LoadingBar gives global progress feedback.
-- EmptyState components improve clarity when data is absent.
+- Client-side DICOM parsing
+  HOW CREATED: dicom-parser in UploadScan.tsx + AnalysisStudio.tsx — parse byte
+  array into dataset, read tags for display/metadata.
 
+- Viewer zoom/pan
+  HOW CREATED: react-zoom-pan-pinch (TransformWrapper / TransformComponent) in
+  AnalysisStudio.tsx.
 
---------------------------------------------------------------------------------
-12) PERFORMANCE AND MAINTAINABILITY
---------------------------------------------------------------------------------
-
-Performance choices:
-- Vite for fast dev and optimized bundles
-- React component separation to limit unnecessary rerenders
-- Context split by concern (auth/theme/toast/confirm) instead of one huge store
-
-Maintainability choices:
-- Feature and layout separation by folders
-- CSS per component/page for predictable styling ownership
-- TypeScript annotations documenting component/API contracts
-
-Potential future improvements:
-- Route-level lazy loading
-- Data fetching abstraction layer (service module or React Query)
-- More memoization on expensive computed UI blocks
+- Server remains authoritative
+  HOW CREATED: frontend checks are UX only; backend multer/rules validate uploads.
 
 
 --------------------------------------------------------------------------------
-13) FRONTEND SECURITY TALKING POINTS
+10) PAGE-BY-PAGE CHECKLIST (WHAT + HOW CREATED)
 --------------------------------------------------------------------------------
 
-Current strengths:
-- Token-based session handling
-- Protected UI routes
-- Error handling for malformed/failed responses
+Use this in discussion: each line = feature + implementation stack.
 
-Known limitations and realistic enhancements:
-- localStorage token risk under XSS -> consider HttpOnly cookies in production
-- Add stricter client input sanitization where needed
-- Add CSP and secure headers through deployment layer
+- Landing — marketing/entry UX
+  HOW CREATED: Landing.tsx; framer-motion (useScroll, useTransform, AnimatePresence).
+
+- Login / Signup / ForgotPassword — auth forms
+  HOW CREATED: controlled inputs (useState); submit handlers call AuthContext;
+  framer-motion layout motion.
+
+- Onboarding, Privacy, Terms — informational
+  HOW CREATED: static/marketing-style React pages + motion where used.
+
+- Dashboard — stats + recent activity + quick actions
+  HOW CREATED: Dashboard.tsx; useState/useEffect/useMemo; fetch /api/scan with
+  authHeaders; periodic refresh; framer-motion; Link quick actions.
+
+- Patients / PatientDetail — patient browsing (mock or API-backed as implemented)
+  HOW CREATED: PatientDetail uses useParams; Link navigation; framer-motion.
+
+- UploadScan — DICOM intake
+  HOW CREATED: framer-motion; dicom-parser optional parse; FormData upload via fetch.
+
+- AnalysisStudio — analysis + viewer tooling
+  HOW CREATED: framer-motion; dicom-parser; react-zoom-pan-pinch; fetch for scans
+  / files as wired in file.
+
+- Reports / ReportDetail — report list and detail (UI layer)
+  HOW CREATED: Reports.tsx / ReportDetail.tsx; framer-motion; possible PDF export
+  via downloadReportPdf (html2canvas + jspdf) when hooked up.
+
+- Compare — side-by-side workflow
+  HOW CREATED: Compare.tsx; framer-motion; fetch uploads as implemented.
+
+- ShareCase — sharing UX
+  HOW CREATED: ShareCase.tsx; framer-motion.
+
+- Analytics / Admin / Settings / Notifications — module pages
+  HOW CREATED: each .tsx page + .css; framer-motion on sections.
+
+- Help — in-app guidance
+  HOW CREATED: Help.tsx; lucide-react icons; Link to /app/status; keyboard
+  shortcut dispatch pattern.
+
+- Search — search UX
+  HOW CREATED: Search.tsx; useSearchParams; framer-motion; Link results.
+
+- Status — system status view
+  HOW CREATED: Status.tsx; framer-motion.
+
+- NotFound — unknown routes
+  HOW CREATED: NotFound.tsx; framer-motion.
 
 
 --------------------------------------------------------------------------------
-14) TESTING AND VALIDATION STRATEGY (HOW TO DEFEND YOUR WORK)
+11) ACCESSIBILITY (A11Y) AND UX QUALITY (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
-Minimum expected manual test matrix:
-- Register -> Login -> /api/auth/me restore user
-- Logout clears token and locks /app routes
-- Upload valid DICOM, reject invalid type
-- List scans, open scan detail, fetch file, delete scan
-- Handle server down / network failure
-- Dark/light theme and basic responsive behavior
+- SkipLink — skip to main content
+  HOW CREATED: SkipLink.tsx + CSS (keyboard-first navigation).
 
-Recommended automation additions:
-- Unit tests for hooks/context utilities
-- Integration tests for auth and upload screens
-- End-to-end flow tests for critical path
+- Focus trap hook — modal focus safety
+  HOW CREATED: useFocusTrap.ts custom hook.
 
+- Keyboard shortcuts panel
+  HOW CREATED: KeyboardShortcuts.tsx; listens for keys / custom events.
 
---------------------------------------------------------------------------------
-15) COMMON DOCTOR QUESTIONS WITH STRONG ANSWERS
---------------------------------------------------------------------------------
+- ErrorBoundary — catch React render errors
+  HOW CREATED: class-based ErrorBoundary pattern in ErrorBoundary.tsx.
 
-Q: Why this frontend architecture?
-A: It separates concerns cleanly: route shell, shared state contexts, page-level
-   features, and utility modules. It is scalable for adding medical modules.
+- LoadingBar — global loading feedback
+  HOW CREATED: LoadingBar.tsx integrated with router/navigation as wired.
 
-Q: How do you ensure robustness?
-A: Typed code, guarded routes, centralized auth context, explicit error handling,
-   fallback UI (ErrorBoundary), and user feedback (toasts/loading/offline state).
-
-Q: How is this clinically useful?
-A: It supports practical workflow steps: secure access, scan upload, analysis
-   entry, comparison/report navigation, and decision-support visibility.
-
-Q: What would you improve next?
-A: Stronger production auth strategy, expanded role-based authorization UX,
-   test automation, and advanced image interaction/reporting modules.
+- EmptyState — empty lists
+  HOW CREATED: EmptyState.tsx + optional action Link.
 
 
 --------------------------------------------------------------------------------
-16) ONE-MINUTE FRONTEND SUMMARY (FOR DISCUSSION OPENING)
+12) PERFORMANCE AND MAINTAINABILITY (+ HOW CREATED)
 --------------------------------------------------------------------------------
 
-The frontend is a React + TypeScript medical dashboard that handles user session,
-navigation, upload and analysis workflows, and communication with backend APIs.
-It uses protected routing, context-based global state, reusable layout components,
-and clear user feedback systems. The architecture is practical for a graduation
-project while still following production-oriented principles and leaving a clear
-path for security, testing, and scalability improvements.
+- Fast dev/build
+  HOW CREATED: Vite bundler; React Refresh via @vitejs/plugin-react.
+
+- Component splitting
+  HOW CREATED: route-level pages + small components; limits rerender surface.
+
+- Memoization where used
+  HOW CREATED: useMemo/useCallback in data-heavy pages (e.g. Dashboard stats).
+
+- Styling ownership
+  HOW CREATED: colocated CSS per feature; predictable class names.
+
+Possible next steps (not implemented): React.lazy + Suspense, React Query — not
+in dependencies today.
+
+
+--------------------------------------------------------------------------------
+13) FRONTEND SECURITY TALKING POINTS (+ HOW CREATED)
+--------------------------------------------------------------------------------
+
+- JWT in Authorization header from client
+  HOW CREATED: Bearer token via authHeaders(); stored in localStorage.
+
+- Protected routes in UI
+  HOW CREATED: ProtectedLayout + useAuth + Navigate.
+
+- HTTPS / CSP / cookies
+  HOW CREATED: deployment concern; not defined in frontend code alone.
+
+Doctor framing: “Defense in depth” — UI guard + server must both enforce policy.
+
+
+--------------------------------------------------------------------------------
+14) TESTING AND VALIDATION (+ HOW CREATED)
+--------------------------------------------------------------------------------
+
+Manual / engineering tests (typical for this stack):
+- Auth flow, upload, navigation, offline banner, error states
+  HOW CREATED: exercised in browser against running Vite app + backend; no
+  automated test runner in package.json scripts beyond eslint.
+
+Automation ideas (future):
+- Vitest/RTL, Playwright — not in package.json currently.
+
+
+--------------------------------------------------------------------------------
+15) COMMON DOCTOR QUESTIONS (+ HOW CREATED ANSWERS)
+--------------------------------------------------------------------------------
+
+Q: Why React + Vite?
+A: Component model + TypeScript + fast developer experience; Vite builds a
+   modern ES module dev server and optimized production bundle.
+
+Q: How is routing done?
+A: react-router-dom nested routes; protected /app tree; layouts with Outlet.
+
+Q: How is global state handled?
+A: React Context for auth/theme/toasts/confirm — no Redux in package.json.
+
+Q: How do you animate the UI?
+A: framer-motion on pages and overlays; lucide-react for icons.
+
+Q: How is DICOM handled in the browser?
+A: dicom-parser for metadata/bytes; react-zoom-pan-pinch for zoom/pan in
+   Analysis Studio; full validation still on server.
+
+
+--------------------------------------------------------------------------------
+16) ONE-MINUTE SUMMARY (FOR OPENING REMARKS)
+--------------------------------------------------------------------------------
+
+The COROnet frontend is a React 19 + TypeScript SPA built with Vite, routed with
+React Router, styled with component-scoped CSS, and enhanced with Framer Motion
+and Lucide icons. It uses React Context for session and UI systems, the Fetch API
+for REST integration, dicom-parser and react-zoom-pan-pinch for imaging workflows,
+and html2canvas + jsPDF where PDF export is implemented. The structure separates
+public marketing/auth pages from a protected /app dashboard with a shared layout.
 
 ================================================================================
 END OF FRONTEND FULL DOCTOR DISCUSSION GUIDE
