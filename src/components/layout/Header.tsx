@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Menu, Bell, User, Moon, Sun, Settings, LogOut } from 'lucide-react';
+import { Menu, Bell, User, Moon, Sun, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -53,7 +53,6 @@ type HeaderProps = {
 };
 
 export default function Header({ title, subtitle }: HeaderProps) {
-  const [searchFocused, setSearchFocused] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -149,15 +148,6 @@ export default function Header({ title, subtitle }: HeaderProps) {
     });
   };
 
-  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const input = form.querySelector('input[type="search"]') as HTMLInputElement;
-    const q = input?.value?.trim() ?? '';
-    navigate(q ? `/app/search?q=${encodeURIComponent(q)}` : '/app/search');
-    input?.blur();
-  };
-
   return (
     <motion.header
       className="header"
@@ -181,22 +171,6 @@ export default function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="header-right">
-        <form
-          className={`header-search-wrap ${searchFocused ? 'header-search-focused' : ''}`}
-          title="Search patients and reports"
-          onSubmit={handleSearchSubmit}
-        >
-          <Search size={18} className="header-search-icon" />
-          <input
-            id="header-search"
-            type="search"
-            placeholder="Search patients, reports..."
-            className="header-search"
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-          />
-        </form>
-
         <button
           type="button"
           className="header-icon-btn"
