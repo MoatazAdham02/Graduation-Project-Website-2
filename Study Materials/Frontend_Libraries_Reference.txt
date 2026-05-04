@@ -1,0 +1,53 @@
+================================================================================
+COROnet - FRONTEND LIBRARIES REFERENCE (from package.json)
+================================================================================
+Source: project root package.json — runtime dependencies and devDependencies.
+Each row: library name | version range (as declared) | brief purpose.
+
+
+--------------------------------------------------------------------------------
+RUNTIME DEPENDENCIES (shipped with the built app)
+--------------------------------------------------------------------------------
+
+| Library                  | Version   | What it does (brief) |
+|--------------------------|-----------|------------------------|
+| react                    | ^19.2.0   | Core UI library: components, hooks, rendering. |
+| react-dom                | ^19.2.0   | Mounts React to the browser DOM (e.g. createRoot). |
+| react-router-dom         | ^7.13.1   | Client-side routing, links, nested routes, navigation. |
+| framer-motion            | ^12.34.3  | Animations and transitions (motion components, gestures). |
+| lucide-react             | ^0.468.0  | Icon set as React components (SVG icons). |
+| dicom-parser             | ^1.8.21   | Parses DICOM bytes in the browser; reads tags/metadata. |
+| react-zoom-pan-pinch     | ^3.7.0    | Zoom, pan, pinch for viewer-style UIs. |
+| html2canvas              | ^1.4.1    | Captures a DOM element to a canvas (UI snapshot). |
+| jspdf                    | ^4.2.1    | Builds PDF files in the browser (e.g. from canvas/image). |
+
+
+--------------------------------------------------------------------------------
+DEV DEPENDENCIES (build, typecheck, lint — not required at runtime in production)
+--------------------------------------------------------------------------------
+
+| Library                     | Version   | What it does (brief) |
+|-----------------------------|-----------|------------------------|
+| vite                        | ^7.3.1    | Dev server and production bundler for the SPA. |
+| @vitejs/plugin-react        | ^5.1.1    | Vite plugin: React + Fast Refresh in development. |
+| typescript                  | ~5.9.3    | Static typing for .ts/.tsx; compile-time checks. |
+| @types/react                | ^19.2.7   | TypeScript types for the react package. |
+| @types/react-dom            | ^19.2.3   | TypeScript types for react-dom. |
+| @types/node                 | ^24.10.1  | TypeScript types for Node APIs (tooling). |
+| eslint                      | ^9.39.1   | Linter for JS/TS code quality and consistency. |
+| @eslint/js                  | ^9.39.1   | ESLint core JS config building blocks. |
+| typescript-eslint           | ^8.48.0   | ESLint integration for TypeScript parsing/rules. |
+| eslint-plugin-react-hooks   | ^7.0.1    | Enforces correct React Hooks usage rules. |
+| eslint-plugin-react-refresh | ^0.4.24 | Rules aligned with Vite/React Fast Refresh. |
+| globals                     | ^16.5.0   | Known global names for ESLint environment config. |
+
+
+--------------------------------------------------------------------------------
+NOTE
+--------------------------------------------------------------------------------
+npm install also installs transitive dependencies (dependencies of these packages).
+They are recorded in package-lock.json; this file lists only direct declarations.
+
+================================================================================
+END OF FRONTEND LIBRARIES REFERENCE
+================================================================================
