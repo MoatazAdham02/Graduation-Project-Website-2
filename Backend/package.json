@@ -1,21 +1,29 @@
 {
   "name": "coronet-backend",
   "version": "1.0.0",
-  "description": "COROnet API with MongoDB",
+  "description": "COROnet API - Medical DICOM Imaging Platform with MongoDB",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
+  "keywords": [
+    "express",
+    "mongodb",
+    "dicom",
+    "medical",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3",
-    "mongodb-memory-server": "^11.0.1",
-    "mongoose": "^9.2.4",
-    "multer": "^2.1.1"
+    "express": "^4.18.2",
+    "mongoose": "^7.6.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1"
   }
 }
